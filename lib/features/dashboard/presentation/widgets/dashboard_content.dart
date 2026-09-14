@@ -1,20 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/responsive_layout.dart';
 import '../../../../shared/widgets/study_card.dart';
 import '../../../../theme/app_colors.dart';
 import '../../domain/dashboard_models.dart';
+import '../dashboard_controller.dart';
+import 'add_entry_sheet.dart';
 import 'dashboard_sections.dart';
 
-class DashboardContent extends StatelessWidget {
-  const DashboardContent({required this.data, super.key});
+class DashboardContent extends ConsumerWidget {
+  const DashboardContent({
+    required this.state,
+    this.focusOnly = false,
+    super.key,
+  });
 
-  final DashboardData data;
+  final StudyBuddyState state;
+  final bool focusOnly;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final compact = context.isCompact;
+    final controller = ref.read(studyBuddyControllerProvider.notifier);
     final horizontalPadding = compact ? 18.0 : 28.0;
+
+    if (focusOnly) {
+      return SingleChildScrollView(
+        padding: EdgeInsets.all(horizontalPadding),
+        child: FocusTimerCard(
+          seconds: state.focusSeconds,
+          isRunning: state.timerRunning,
+          onToggle: controller.toggleTimer,
+          onReset: controller.resetTimer,
+        ),
+      );
+    }
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
@@ -29,14 +50,14 @@ class DashboardContent extends StatelessWidget {
           const DashboardTopBar(),
           const SizedBox(height: 26),
           Text(
-            'Hallo Mia ❤️',
+            'Hallo Mia',
             style: compact
                 ? Theme.of(context).textTheme.headlineMedium
                 : Theme.of(context).textTheme.headlineLarge,
           ),
           const SizedBox(height: 8),
           Text(
-            'Schoen, dass du da bist! Heute ist ein guter Tag, um an deinen Zielen zu arbeiten.',
+            'Schoen, dass du da bist. Dein neues Studium startet hier ganz frisch.',
             style: Theme.of(context).textTheme.bodyLarge
                 ?.copyWith(color: AppColors.mutedInk, height: 1.45),
           ),
@@ -44,16 +65,57 @@ class DashboardContent extends StatelessWidget {
           _ResponsiveGrid(
             minItemWidth: 190,
             spacing: 16,
-            children: [for (final kpi in data.kpis) KpiCard(item: kpi)],
+            children: [
+              KpiCard(
+                item: KpiItem(
+                  'Lernstreak',
+                  '0 Tage',
+                  Icons.local_fire_department_rounded,
+                ),
+              ),
+              KpiCard(
+                item: KpiItem(
+                  'Lernzeit diese Woche',
+                  '0 h',
+                  Icons.schedule_rounded,
+                ),
+              ),
+              KpiCard(
+                item: KpiItem(
+                  'Aufgaben erledigt',
+                  '${state.tasks.where((task) => task.done).length} / ${state.tasks.length}',
+                  Icons.check_circle_rounded,
+                ),
+              ),
+              KpiCard(
+                item: KpiItem(
+                  'Naechste Pruefung',
+                  state.exams.isEmpty
+                      ? 'noch offen'
+                      : state.exams.first.dateLabel,
+                  Icons.school_rounded,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 18),
           _ResponsiveGrid(
             minItemWidth: context.isExpanded ? 280 : 260,
             spacing: 18,
             children: [
-              TodayCard(items: data.schedule),
-              TasksCard(tasks: data.tasks),
-              ExamCard(exam: data.exam),
+              TodayCard(
+                items: state.schedule,
+                onAdd: () => showScheduleSheet(context, controller),
+              ),
+              TasksCard(
+                tasks: state.tasks,
+                onAdd: () => showTaskSheet(context, controller),
+                onToggle: controller.toggleTask,
+              ),
+              ExamCard(
+                exams: state.exams,
+                onAdd: () => showExamSheet(context, controller),
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -61,10 +123,21 @@ class DashboardContent extends StatelessWidget {
             minItemWidth: context.isExpanded ? 260 : 240,
             spacing: 18,
             children: [
-              const FocusTimerCard(),
-              StudyHoursCard(hours: data.studyHours),
-              NotesCard(notes: data.notes),
-              DailyGoalCard(goal: data.dailyGoal),
+              FocusTimerCard(
+                seconds: state.focusSeconds,
+                isRunning: state.timerRunning,
+                onToggle: controller.toggleTimer,
+                onReset: controller.resetTimer,
+              ),
+              StudyHoursCard(hours: const []),
+              NotesCard(
+                notes: state.notes,
+                onAdd: () => showNoteSheet(context, controller),
+              ),
+              DailyGoalCard(
+                activeTasks: state.tasks.where((task) => task.done).length,
+                totalTasks: state.tasks.length,
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -75,7 +148,7 @@ class DashboardContent extends StatelessWidget {
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Kleine Schritte, grosse Ergebnisse. ❤️',
+                    'Kleine Schritte, grosse Ergebnisse.',
                     style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),

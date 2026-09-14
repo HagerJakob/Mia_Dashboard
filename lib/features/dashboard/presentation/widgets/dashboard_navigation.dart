@@ -4,9 +4,16 @@ import '../../../../shared/models/navigation_item.dart';
 import '../../../../theme/app_colors.dart';
 
 class StudySidebar extends StatelessWidget {
-  const StudySidebar({required this.items, super.key});
+  const StudySidebar({
+    required this.items,
+    required this.selectedIndex,
+    required this.onSelected,
+    super.key,
+  });
 
   final List<StudyNavigationItem> items;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -24,8 +31,12 @@ class StudySidebar extends StatelessWidget {
         children: [
           const _Logo(),
           const SizedBox(height: 28),
-          for (final item in items)
-            _SidebarTile(item: item, selected: item.label == 'Dashboard'),
+          for (var index = 0; index < items.length; index++)
+            _SidebarTile(
+              item: items[index],
+              selected: index == selectedIndex,
+              onTap: () => onSelected(index),
+            ),
           const Spacer(),
           const _SidebarTile(
             item: StudyNavigationItem(
@@ -40,15 +51,23 @@ class StudySidebar extends StatelessWidget {
 }
 
 class StudyNavigationRail extends StatelessWidget {
-  const StudyNavigationRail({required this.items, super.key});
+  const StudyNavigationRail({
+    required this.items,
+    required this.selectedIndex,
+    required this.onSelected,
+    super.key,
+  });
 
   final List<StudyNavigationItem> items;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
     return NavigationRail(
       minWidth: 82,
-      selectedIndex: 0,
+      selectedIndex: selectedIndex.clamp(0, items.length - 1),
+      onDestinationSelected: onSelected,
       labelType: NavigationRailLabelType.all,
       leading: const Padding(
         padding: EdgeInsets.only(top: 12, bottom: 18),
@@ -69,14 +88,22 @@ class StudyNavigationRail extends StatelessWidget {
 }
 
 class StudyBottomNavigation extends StatelessWidget {
-  const StudyBottomNavigation({required this.items, super.key});
+  const StudyBottomNavigation({
+    required this.items,
+    required this.selectedIndex,
+    required this.onSelected,
+    super.key,
+  });
 
   final List<StudyNavigationItem> items;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
     return NavigationBar(
-      selectedIndex: 0,
+      selectedIndex: selectedIndex.clamp(0, items.length - 1),
+      onDestinationSelected: onSelected,
       height: 72,
       destinations: [
         for (final item in items)
@@ -110,10 +137,11 @@ class _Logo extends StatelessWidget {
 }
 
 class _SidebarTile extends StatelessWidget {
-  const _SidebarTile({required this.item, this.selected = false});
+  const _SidebarTile({required this.item, this.selected = false, this.onTap});
 
   final StudyNavigationItem item;
   final bool selected;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -125,6 +153,7 @@ class _SidebarTile extends StatelessWidget {
       ),
       child: ListTile(
         dense: true,
+        onTap: onTap,
         leading: Icon(
           item.icon,
           color: selected ? AppColors.mauve : AppColors.mutedInk,
