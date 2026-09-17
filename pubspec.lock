@@ -278,6 +278,11 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
+  flutter_localizations:
+    dependency: "direct main"
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   flutter_riverpod:
     dependency: "direct main"
     description:
@@ -672,6 +677,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.3"
+  rrule:
+    dependency: "direct main"
+    description:
+      name: rrule
+      sha256: f6f6ad5bf7b19d218d4c985d6055d3c9717f1d6efd5d1c0127b1146f1eb3640c
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.18"
   shared_preferences:
     dependency: transitive
     description:
@@ -766,7 +779,7 @@ packages:
     source: hosted
     version: "1.10.2"
   sqlite3:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: sqlite3
       sha256: "4c7fe79840389aaeaf05fd093f795b631b5a98e2bd28d54e555c100f4a9c7a1c"
@@ -877,6 +890,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.12"
+  time:
+    dependency: transitive
+    description:
+      name: time
+      sha256: "46187cf30bffdab28c56be9a63861b36e4ab7347bf403297595d6a97e10c789f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.6"
   typed_data:
     dependency: transitive
     description:

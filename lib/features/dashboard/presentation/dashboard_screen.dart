@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/responsive_layout.dart';
 import '../../../shared/models/navigation_item.dart';
 import '../../../theme/app_colors.dart';
+import '../../auth/presentation/account_screen.dart';
+import '../../calendar/presentation/calendar_screen.dart';
 import '../domain/dashboard_models.dart';
 import 'dashboard_controller.dart';
 import 'widgets/add_entry_sheet.dart';
@@ -30,12 +32,24 @@ class DashboardScreen extends ConsumerWidget {
     final state = ref.watch(studyBuddyControllerProvider);
     final controller = ref.read(studyBuddyControllerProvider.notifier);
     final selectedIndex = state.selectedIndex;
+    void openAccount() => Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const AccountScreen()));
 
     if (context.isCompact) {
       final mobileItems = _items.take(4).toList();
       final mobileIndex = selectedIndex.clamp(0, mobileItems.length - 1);
 
       return Scaffold(
+        appBar: AppBar(
+          title: const Text('StudyBuddy'),
+          actions: [
+            IconButton(
+              tooltip: 'Konto',
+              onPressed: openAccount,
+              icon: const Icon(Icons.person_outline_rounded),
+            ),
+          ],
+        ),
         body: SafeArea(
           child: _SelectedDestination(
             state: state.copyWith(selectedIndex: mobileIndex),
@@ -59,11 +73,13 @@ class DashboardScreen extends ConsumerWidget {
                     items: _items,
                     selectedIndex: selectedIndex,
                     onSelected: controller.selectDestination,
+                    onSettings: openAccount,
                   )
                 : StudyNavigationRail(
                     items: _items.take(6).toList(),
                     selectedIndex: selectedIndex,
                     onSelected: controller.selectDestination,
+                    onSettings: openAccount,
                   ),
             Expanded(child: _SelectedDestination(state: state)),
           ],
@@ -84,21 +100,7 @@ class _SelectedDestination extends ConsumerWidget {
 
     return switch (state.selectedIndex) {
       0 => DashboardContent(state: state),
-      1 => EmptyFeatureScreen(
-        title: 'Kalender',
-        message: 'Dein Stundenplan und deine Termine starten leer.',
-        icon: Icons.calendar_month_rounded,
-        actionLabel: 'Termin eintragen',
-        children: [
-          for (final item in state.schedule)
-            ListTile(
-              leading: Text(item.time),
-              title: Text(item.title),
-              contentPadding: EdgeInsets.zero,
-            ),
-        ],
-        onAction: () => showScheduleSheet(context, controller),
-      ),
+      1 => const CalendarScreen(),
       2 => EmptyFeatureScreen(
         title: 'Aufgaben',
         message: 'Noch keine Aufgaben. Mia kann hier alles selbst anlegen.',

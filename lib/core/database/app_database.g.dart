@@ -36,6 +36,17 @@ class $ScheduleEntriesTable extends ScheduleEntries
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _eventJsonMeta = const VerificationMeta(
+    'eventJson',
+  );
+  @override
+  late final GeneratedColumn<String> eventJson = GeneratedColumn<String>(
+    'event_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -89,6 +100,7 @@ class $ScheduleEntriesTable extends ScheduleEntries
     id,
     time,
     title,
+    eventJson,
     createdAt,
     updatedAt,
     deletedAt,
@@ -126,6 +138,12 @@ class $ScheduleEntriesTable extends ScheduleEntries
       );
     } else if (isInserting) {
       context.missing(_titleMeta);
+    }
+    if (data.containsKey('event_json')) {
+      context.handle(
+        _eventJsonMeta,
+        eventJson.isAcceptableOrUnknown(data['event_json']!, _eventJsonMeta),
+      );
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -176,6 +194,10 @@ class $ScheduleEntriesTable extends ScheduleEntries
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       )!,
+      eventJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_json'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -205,6 +227,7 @@ class ScheduleEntry extends DataClass implements Insertable<ScheduleEntry> {
   final String id;
   final String time;
   final String title;
+  final String? eventJson;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -213,6 +236,7 @@ class ScheduleEntry extends DataClass implements Insertable<ScheduleEntry> {
     required this.id,
     required this.time,
     required this.title,
+    this.eventJson,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -224,6 +248,9 @@ class ScheduleEntry extends DataClass implements Insertable<ScheduleEntry> {
     map['id'] = Variable<String>(id);
     map['time'] = Variable<String>(time);
     map['title'] = Variable<String>(title);
+    if (!nullToAbsent || eventJson != null) {
+      map['event_json'] = Variable<String>(eventJson);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
@@ -238,6 +265,9 @@ class ScheduleEntry extends DataClass implements Insertable<ScheduleEntry> {
       id: Value(id),
       time: Value(time),
       title: Value(title),
+      eventJson: eventJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(eventJson),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -256,6 +286,7 @@ class ScheduleEntry extends DataClass implements Insertable<ScheduleEntry> {
       id: serializer.fromJson<String>(json['id']),
       time: serializer.fromJson<String>(json['time']),
       title: serializer.fromJson<String>(json['title']),
+      eventJson: serializer.fromJson<String?>(json['eventJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -269,6 +300,7 @@ class ScheduleEntry extends DataClass implements Insertable<ScheduleEntry> {
       'id': serializer.toJson<String>(id),
       'time': serializer.toJson<String>(time),
       'title': serializer.toJson<String>(title),
+      'eventJson': serializer.toJson<String?>(eventJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -280,6 +312,7 @@ class ScheduleEntry extends DataClass implements Insertable<ScheduleEntry> {
     String? id,
     String? time,
     String? title,
+    Value<String?> eventJson = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -288,6 +321,7 @@ class ScheduleEntry extends DataClass implements Insertable<ScheduleEntry> {
     id: id ?? this.id,
     time: time ?? this.time,
     title: title ?? this.title,
+    eventJson: eventJson.present ? eventJson.value : this.eventJson,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -298,6 +332,7 @@ class ScheduleEntry extends DataClass implements Insertable<ScheduleEntry> {
       id: data.id.present ? data.id.value : this.id,
       time: data.time.present ? data.time.value : this.time,
       title: data.title.present ? data.title.value : this.title,
+      eventJson: data.eventJson.present ? data.eventJson.value : this.eventJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -311,6 +346,7 @@ class ScheduleEntry extends DataClass implements Insertable<ScheduleEntry> {
           ..write('id: $id, ')
           ..write('time: $time, ')
           ..write('title: $title, ')
+          ..write('eventJson: $eventJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -320,8 +356,16 @@ class ScheduleEntry extends DataClass implements Insertable<ScheduleEntry> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, time, title, createdAt, updatedAt, deletedAt, needsSync);
+  int get hashCode => Object.hash(
+    id,
+    time,
+    title,
+    eventJson,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    needsSync,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -329,6 +373,7 @@ class ScheduleEntry extends DataClass implements Insertable<ScheduleEntry> {
           other.id == this.id &&
           other.time == this.time &&
           other.title == this.title &&
+          other.eventJson == this.eventJson &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -339,6 +384,7 @@ class ScheduleEntriesCompanion extends UpdateCompanion<ScheduleEntry> {
   final Value<String> id;
   final Value<String> time;
   final Value<String> title;
+  final Value<String?> eventJson;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -348,6 +394,7 @@ class ScheduleEntriesCompanion extends UpdateCompanion<ScheduleEntry> {
     this.id = const Value.absent(),
     this.time = const Value.absent(),
     this.title = const Value.absent(),
+    this.eventJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -358,6 +405,7 @@ class ScheduleEntriesCompanion extends UpdateCompanion<ScheduleEntry> {
     required String id,
     required String time,
     required String title,
+    this.eventJson = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
@@ -372,6 +420,7 @@ class ScheduleEntriesCompanion extends UpdateCompanion<ScheduleEntry> {
     Expression<String>? id,
     Expression<String>? time,
     Expression<String>? title,
+    Expression<String>? eventJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -382,6 +431,7 @@ class ScheduleEntriesCompanion extends UpdateCompanion<ScheduleEntry> {
       if (id != null) 'id': id,
       if (time != null) 'time': time,
       if (title != null) 'title': title,
+      if (eventJson != null) 'event_json': eventJson,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -394,6 +444,7 @@ class ScheduleEntriesCompanion extends UpdateCompanion<ScheduleEntry> {
     Value<String>? id,
     Value<String>? time,
     Value<String>? title,
+    Value<String?>? eventJson,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -404,6 +455,7 @@ class ScheduleEntriesCompanion extends UpdateCompanion<ScheduleEntry> {
       id: id ?? this.id,
       time: time ?? this.time,
       title: title ?? this.title,
+      eventJson: eventJson ?? this.eventJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -423,6 +475,9 @@ class ScheduleEntriesCompanion extends UpdateCompanion<ScheduleEntry> {
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
+    }
+    if (eventJson.present) {
+      map['event_json'] = Variable<String>(eventJson.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -448,6 +503,7 @@ class ScheduleEntriesCompanion extends UpdateCompanion<ScheduleEntry> {
           ..write('id: $id, ')
           ..write('time: $time, ')
           ..write('title: $title, ')
+          ..write('eventJson: $eventJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -2803,6 +2859,473 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
   }
 }
 
+class $CalendarCategoriesTable extends CalendarCategories
+    with TableInfo<$CalendarCategoriesTable, CalendarCategory> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CalendarCategoriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _colorValueMeta = const VerificationMeta(
+    'colorValue',
+  );
+  @override
+  late final GeneratedColumn<int> colorValue = GeneratedColumn<int>(
+    'color_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _needsSyncMeta = const VerificationMeta(
+    'needsSync',
+  );
+  @override
+  late final GeneratedColumn<bool> needsSync = GeneratedColumn<bool>(
+    'needs_sync',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("needs_sync" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    colorValue,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    needsSync,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'calendar_categories';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CalendarCategory> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('color_value')) {
+      context.handle(
+        _colorValueMeta,
+        colorValue.isAcceptableOrUnknown(data['color_value']!, _colorValueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_colorValueMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('needs_sync')) {
+      context.handle(
+        _needsSyncMeta,
+        needsSync.isAcceptableOrUnknown(data['needs_sync']!, _needsSyncMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CalendarCategory map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CalendarCategory(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      colorValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}color_value'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      needsSync: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}needs_sync'],
+      )!,
+    );
+  }
+
+  @override
+  $CalendarCategoriesTable createAlias(String alias) {
+    return $CalendarCategoriesTable(attachedDatabase, alias);
+  }
+}
+
+class CalendarCategory extends DataClass
+    implements Insertable<CalendarCategory> {
+  final String id;
+  final String name;
+  final int colorValue;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  final bool needsSync;
+  const CalendarCategory({
+    required this.id,
+    required this.name,
+    required this.colorValue,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.needsSync,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['color_value'] = Variable<int>(colorValue);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['needs_sync'] = Variable<bool>(needsSync);
+    return map;
+  }
+
+  CalendarCategoriesCompanion toCompanion(bool nullToAbsent) {
+    return CalendarCategoriesCompanion(
+      id: Value(id),
+      name: Value(name),
+      colorValue: Value(colorValue),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      needsSync: Value(needsSync),
+    );
+  }
+
+  factory CalendarCategory.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CalendarCategory(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      colorValue: serializer.fromJson<int>(json['colorValue']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      needsSync: serializer.fromJson<bool>(json['needsSync']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'colorValue': serializer.toJson<int>(colorValue),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'needsSync': serializer.toJson<bool>(needsSync),
+    };
+  }
+
+  CalendarCategory copyWith({
+    String? id,
+    String? name,
+    int? colorValue,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    bool? needsSync,
+  }) => CalendarCategory(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    colorValue: colorValue ?? this.colorValue,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    needsSync: needsSync ?? this.needsSync,
+  );
+  CalendarCategory copyWithCompanion(CalendarCategoriesCompanion data) {
+    return CalendarCategory(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      colorValue: data.colorValue.present
+          ? data.colorValue.value
+          : this.colorValue,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      needsSync: data.needsSync.present ? data.needsSync.value : this.needsSync,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CalendarCategory(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('needsSync: $needsSync')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    colorValue,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    needsSync,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CalendarCategory &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.colorValue == this.colorValue &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.needsSync == this.needsSync);
+}
+
+class CalendarCategoriesCompanion extends UpdateCompanion<CalendarCategory> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<int> colorValue;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<bool> needsSync;
+  final Value<int> rowid;
+  const CalendarCategoriesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.colorValue = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.needsSync = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CalendarCategoriesCompanion.insert({
+    required String id,
+    required String name,
+    required int colorValue,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.needsSync = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       colorValue = Value(colorValue),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<CalendarCategory> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<int>? colorValue,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<bool>? needsSync,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (colorValue != null) 'color_value': colorValue,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (needsSync != null) 'needs_sync': needsSync,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CalendarCategoriesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<int>? colorValue,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<bool>? needsSync,
+    Value<int>? rowid,
+  }) {
+    return CalendarCategoriesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      colorValue: colorValue ?? this.colorValue,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      needsSync: needsSync ?? this.needsSync,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (colorValue.present) {
+      map['color_value'] = Variable<int>(colorValue.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (needsSync.present) {
+      map['needs_sync'] = Variable<bool>(needsSync.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CalendarCategoriesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('needsSync: $needsSync, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2814,6 +3337,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SubjectsTable subjects = $SubjectsTable(this);
   late final $ExamsTable exams = $ExamsTable(this);
   late final $RemindersTable reminders = $RemindersTable(this);
+  late final $CalendarCategoriesTable calendarCategories =
+      $CalendarCategoriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2825,6 +3350,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     subjects,
     exams,
     reminders,
+    calendarCategories,
   ];
 }
 
@@ -2833,6 +3359,7 @@ typedef $$ScheduleEntriesTableCreateCompanionBuilder =
       required String id,
       required String time,
       required String title,
+      Value<String?> eventJson,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<DateTime?> deletedAt,
@@ -2844,6 +3371,7 @@ typedef $$ScheduleEntriesTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> time,
       Value<String> title,
+      Value<String?> eventJson,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> deletedAt,
@@ -2872,6 +3400,11 @@ class $$ScheduleEntriesTableFilterComposer
 
   ColumnFilters<String> get title => $composableBuilder(
     column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventJson => $composableBuilder(
+    column: $table.eventJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2920,6 +3453,11 @@ class $$ScheduleEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get eventJson => $composableBuilder(
+    column: $table.eventJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -2958,6 +3496,9 @@ class $$ScheduleEntriesTableAnnotationComposer
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get eventJson =>
+      $composableBuilder(column: $table.eventJson, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -3008,6 +3549,7 @@ class $$ScheduleEntriesTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> time = const Value.absent(),
                 Value<String> title = const Value.absent(),
+                Value<String?> eventJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -3017,6 +3559,7 @@ class $$ScheduleEntriesTableTableManager
                 id: id,
                 time: time,
                 title: title,
+                eventJson: eventJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -3028,6 +3571,7 @@ class $$ScheduleEntriesTableTableManager
                 required String id,
                 required String time,
                 required String title,
+                Value<String?> eventJson = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -3037,6 +3581,7 @@ class $$ScheduleEntriesTableTableManager
                 id: id,
                 time: time,
                 title: title,
+                eventJson: eventJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -4290,6 +4835,270 @@ typedef $$RemindersTableProcessedTableManager =
       Reminder,
       PrefetchHooks Function()
     >;
+typedef $$CalendarCategoriesTableCreateCompanionBuilder =
+    CalendarCategoriesCompanion Function({
+      required String id,
+      required String name,
+      required int colorValue,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<bool> needsSync,
+      Value<int> rowid,
+    });
+typedef $$CalendarCategoriesTableUpdateCompanionBuilder =
+    CalendarCategoriesCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<int> colorValue,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<bool> needsSync,
+      Value<int> rowid,
+    });
+
+class $$CalendarCategoriesTableFilterComposer
+    extends Composer<_$AppDatabase, $CalendarCategoriesTable> {
+  $$CalendarCategoriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get needsSync => $composableBuilder(
+    column: $table.needsSync,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CalendarCategoriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CalendarCategoriesTable> {
+  $$CalendarCategoriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get needsSync => $composableBuilder(
+    column: $table.needsSync,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CalendarCategoriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CalendarCategoriesTable> {
+  $$CalendarCategoriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get needsSync =>
+      $composableBuilder(column: $table.needsSync, builder: (column) => column);
+}
+
+class $$CalendarCategoriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CalendarCategoriesTable,
+          CalendarCategory,
+          $$CalendarCategoriesTableFilterComposer,
+          $$CalendarCategoriesTableOrderingComposer,
+          $$CalendarCategoriesTableAnnotationComposer,
+          $$CalendarCategoriesTableCreateCompanionBuilder,
+          $$CalendarCategoriesTableUpdateCompanionBuilder,
+          (
+            CalendarCategory,
+            BaseReferences<
+              _$AppDatabase,
+              $CalendarCategoriesTable,
+              CalendarCategory
+            >,
+          ),
+          CalendarCategory,
+          PrefetchHooks Function()
+        > {
+  $$CalendarCategoriesTableTableManager(
+    _$AppDatabase db,
+    $CalendarCategoriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CalendarCategoriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CalendarCategoriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CalendarCategoriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> colorValue = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<bool> needsSync = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CalendarCategoriesCompanion(
+                id: id,
+                name: name,
+                colorValue: colorValue,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                needsSync: needsSync,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required int colorValue,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<bool> needsSync = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CalendarCategoriesCompanion.insert(
+                id: id,
+                name: name,
+                colorValue: colorValue,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                needsSync: needsSync,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$CalendarCategoriesTable, CalendarCategory>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $CalendarCategoriesTable,
+                    CalendarCategory
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CalendarCategoriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CalendarCategoriesTable,
+      CalendarCategory,
+      $$CalendarCategoriesTableFilterComposer,
+      $$CalendarCategoriesTableOrderingComposer,
+      $$CalendarCategoriesTableAnnotationComposer,
+      $$CalendarCategoriesTableCreateCompanionBuilder,
+      $$CalendarCategoriesTableUpdateCompanionBuilder,
+      (
+        CalendarCategory,
+        BaseReferences<
+          _$AppDatabase,
+          $CalendarCategoriesTable,
+          CalendarCategory
+        >,
+      ),
+      CalendarCategory,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4306,4 +5115,6 @@ class $AppDatabaseManager {
       $$ExamsTableTableManager(_db, _db.exams);
   $$RemindersTableTableManager get reminders =>
       $$RemindersTableTableManager(_db, _db.reminders);
+  $$CalendarCategoriesTableTableManager get calendarCategories =>
+      $$CalendarCategoriesTableTableManager(_db, _db.calendarCategories);
 }

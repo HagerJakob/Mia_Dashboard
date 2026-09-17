@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   cupertino_icons: ^1.0.8
   drift: ^2.29.0
@@ -37,10 +39,12 @@ dependencies:
   intl: ^0.20.2
   path: ^1.9.1
   path_provider: ^2.1.5
+  rrule: ^0.2.18
   sqlite3_flutter_libs: ^0.5.40
   supabase_flutter: ^2.10.3
 
 dev_dependencies:
+  sqlite3: ^3.5.2
   build_runner: ^2.10.4
   drift_dev: ^2.29.0
   flutter_test:

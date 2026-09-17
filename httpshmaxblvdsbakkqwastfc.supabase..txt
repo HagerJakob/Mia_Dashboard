@@ -1,0 +1,4 @@
+https://hmaxblvdsbakkqwastfc.supabase.co/rest/v1/
+sb_publishable_KsNRPjaGp-V3gL4ol2If_g_W34ucm0E
+
+flutter run -d windows --dart-define=SUPABASE_URL=https://hmaxblvdsbakkqwastfc.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_KsNRPjaGp-V3gL4ol2If_g_W34ucm0E

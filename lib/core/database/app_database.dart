@@ -8,6 +8,7 @@ class ScheduleEntries extends Table {
   TextColumn get id => text()();
   TextColumn get time => text()();
   TextColumn get title => text()();
+  TextColumn get eventJson => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -84,14 +85,47 @@ class Reminders extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+class CalendarCategories extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  IntColumn get colorValue => integer()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+  BoolColumn get needsSync => boolean().withDefault(const Constant(true))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DriftDatabase(
-  tables: [ScheduleEntries, Tasks, Notes, Subjects, Exams, Reminders],
+  tables: [
+    ScheduleEntries,
+    Tasks,
+    Notes,
+    Subjects,
+    Exams,
+    Reminders,
+    CalendarCategories,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openConnection());
+  AppDatabase.withExecutor(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(scheduleEntries, scheduleEntries.eventJson);
+        await m.createTable(calendarCategories);
+      }
+    },
+  );
 
   Future<List<ScheduleEntry>> activeScheduleEntries() {
     return (select(scheduleEntries)

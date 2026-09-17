@@ -8,12 +8,14 @@ class StudySidebar extends StatelessWidget {
     required this.items,
     required this.selectedIndex,
     required this.onSelected,
+    required this.onSettings,
     super.key,
   });
 
   final List<StudyNavigationItem> items;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +40,12 @@ class StudySidebar extends StatelessWidget {
               onTap: () => onSelected(index),
             ),
           const Spacer(),
-          const _SidebarTile(
+          _SidebarTile(
             item: StudyNavigationItem(
               label: 'Einstellungen',
               icon: Icons.settings_rounded,
             ),
+            onTap: onSettings,
           ),
         ],
       ),
@@ -55,12 +58,14 @@ class StudyNavigationRail extends StatelessWidget {
     required this.items,
     required this.selectedIndex,
     required this.onSelected,
+    required this.onSettings,
     super.key,
   });
 
   final List<StudyNavigationItem> items;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +80,11 @@ class StudyNavigationRail extends StatelessWidget {
           backgroundColor: AppColors.blush,
           child: Icon(Icons.favorite_rounded, color: AppColors.mauve),
         ),
+      ),
+      trailing: IconButton(
+        tooltip: 'Konto & Synchronisierung',
+        onPressed: onSettings,
+        icon: const Icon(Icons.settings_rounded),
       ),
       destinations: [
         for (final item in items)
@@ -130,7 +140,13 @@ class _Logo extends StatelessWidget {
           child: const Icon(Icons.favorite_rounded, color: AppColors.mauve),
         ),
         const SizedBox(width: 12),
-        Text('StudyBuddy', style: Theme.of(context).textTheme.titleLarge),
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text('StudyBuddy', style: Theme.of(context).textTheme.titleLarge),
+          ),
+        ),
       ],
     );
   }
@@ -145,27 +161,27 @@ class _SidebarTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
         color: selected ? AppColors.blush : Colors.transparent,
         borderRadius: BorderRadius.circular(18),
-      ),
-      child: ListTile(
-        dense: true,
-        onTap: onTap,
-        leading: Icon(
-          item.icon,
-          color: selected ? AppColors.mauve : AppColors.mutedInk,
-        ),
-        title: Text(
-          item.label,
-          style: TextStyle(
-            color: selected ? AppColors.ink : AppColors.mutedInk,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+        child: ListTile(
+          dense: true,
+          onTap: onTap,
+          leading: Icon(
+            item.icon,
+            color: selected ? AppColors.mauve : AppColors.mutedInk,
           ),
+          title: Text(
+            item.label,
+            style: TextStyle(
+              color: selected ? AppColors.ink : AppColors.mutedInk,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            ),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
       ),
     );
   }

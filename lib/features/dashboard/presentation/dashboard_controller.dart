@@ -22,7 +22,7 @@ class StudyBuddyController extends Notifier<StudyBuddyState> {
   @override
   StudyBuddyState build() {
     ref.onDispose(() => _timer?.cancel());
-    Future<void>.microtask(_loadPersistedState);
+    Future<void>.microtask(_loadPersistedState).catchError((Object _) {});
     return const StudyBuddyState();
   }
 
@@ -34,6 +34,27 @@ class StudyBuddyController extends Notifier<StudyBuddyState> {
       focusSeconds: state.focusSeconds,
       timerRunning: state.timerRunning,
     );
+    await syncNow();
+  }
+
+  Future<void> syncNow() async {
+    final repository = ref.read(studyBuddyRepositoryProvider);
+    await repository.syncNow();
+    final fresh = await repository.loadInitialState();
+    state = fresh.copyWith(
+      selectedIndex: state.selectedIndex,
+      focusSeconds: state.focusSeconds,
+      timerRunning: state.timerRunning,
+    );
+  }
+
+  Future<void> _save(Future<void> operation) async {
+    try {
+      await operation;
+      await syncNow();
+    } catch (_) {
+      // The local write remains queued for the next successful sync.
+    }
   }
 
   void selectDestination(int index) {
@@ -43,13 +64,15 @@ class StudyBuddyController extends Notifier<StudyBuddyState> {
   void addScheduleItem(String time, String title) {
     final item = TimedItem(id: _id(), time: time, title: title);
     state = state.copyWith(schedule: [...state.schedule, item]);
-    unawaited(ref.read(studyBuddyRepositoryProvider).addScheduleItem(item));
+    unawaited(
+      _save(ref.read(studyBuddyRepositoryProvider).addScheduleItem(item)),
+    );
   }
 
   void addTask(String title) {
     final task = TaskItem(id: _id(), title: title);
     state = state.copyWith(tasks: [...state.tasks, task]);
-    unawaited(ref.read(studyBuddyRepositoryProvider).addTask(task));
+    unawaited(_save(ref.read(studyBuddyRepositoryProvider).addTask(task)));
   }
 
   void toggleTask(String id) {
@@ -65,20 +88,24 @@ class StudyBuddyController extends Notifier<StudyBuddyState> {
     );
 
     if (updatedTask != null) {
-      unawaited(ref.read(studyBuddyRepositoryProvider).updateTask(updatedTask));
+      unawaited(
+        _save(ref.read(studyBuddyRepositoryProvider).updateTask(updatedTask)),
+      );
     }
   }
 
   void addNote(String title, String body) {
     final note = NoteItem(id: _id(), title: title, body: body);
     state = state.copyWith(notes: [...state.notes, note]);
-    unawaited(ref.read(studyBuddyRepositoryProvider).addNote(note));
+    unawaited(_save(ref.read(studyBuddyRepositoryProvider).addNote(note)));
   }
 
   void addSubject(String name) {
     final subject = SubjectItem(id: _id(), name: name);
     state = state.copyWith(subjects: [...state.subjects, subject]);
-    unawaited(ref.read(studyBuddyRepositoryProvider).addSubject(subject));
+    unawaited(
+      _save(ref.read(studyBuddyRepositoryProvider).addSubject(subject)),
+    );
   }
 
   void addExam(String subject, String dateLabel) {
@@ -88,7 +115,7 @@ class StudyBuddyController extends Notifier<StudyBuddyState> {
       dateLabel: dateLabel,
     );
     state = state.copyWith(exams: [...state.exams, exam]);
-    unawaited(ref.read(studyBuddyRepositoryProvider).addExam(exam));
+    unawaited(_save(ref.read(studyBuddyRepositoryProvider).addExam(exam)));
   }
 
   void addReminder(String title, String dateLabel) {
@@ -98,7 +125,9 @@ class StudyBuddyController extends Notifier<StudyBuddyState> {
       dateLabel: dateLabel,
     );
     state = state.copyWith(reminders: [...state.reminders, reminder]);
-    unawaited(ref.read(studyBuddyRepositoryProvider).addReminder(reminder));
+    unawaited(
+      _save(ref.read(studyBuddyRepositoryProvider).addReminder(reminder)),
+    );
   }
 
   void toggleTimer() {

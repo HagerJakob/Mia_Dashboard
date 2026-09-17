@@ -96,36 +96,16 @@ Future<void> _showOneFieldSheet({
   required String hint,
   required ValueChanged<String> onSave,
 }) {
-  final controller = TextEditingController();
-
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (context) => _SheetFrame(
+    builder: (context) => _EntrySheet(
       title: title,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: controller,
-            decoration: InputDecoration(labelText: label, hintText: hint),
-            autofocus: true,
-          ),
-          const SizedBox(height: 18),
-          _SaveButton(
-            onPressed: () {
-              final value = controller.text.trim();
-              if (value.isEmpty) {
-                return;
-              }
-              onSave(value);
-              Navigator.of(context).pop();
-            },
-          ),
-        ],
-      ),
+      firstLabel: label,
+      firstHint: hint,
+      onSave: (first, _) => onSave(first),
     ),
-  ).whenComplete(controller.dispose);
+  );
 }
 
 Future<void> _showTwoFieldSheet({
@@ -138,60 +118,74 @@ Future<void> _showTwoFieldSheet({
   required void Function(String first, String second) onSave,
   int secondMaxLines = 1,
 }) {
-  final firstController = TextEditingController();
-  final secondController = TextEditingController();
-
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    builder: (context) => _SheetFrame(
+    builder: (context) => _EntrySheet(
       title: title,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: firstController,
-            decoration: InputDecoration(
-              labelText: firstLabel,
-              hintText: firstHint,
-            ),
-            autofocus: true,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: secondController,
-            maxLines: secondMaxLines,
-            decoration: InputDecoration(
-              labelText: secondLabel,
-              hintText: secondHint,
-            ),
-          ),
-          const SizedBox(height: 18),
-          _SaveButton(
-            onPressed: () {
-              final first = firstController.text.trim();
-              final second = secondController.text.trim();
-              if (first.isEmpty || second.isEmpty) {
-                return;
-              }
-              onSave(first, second);
-              Navigator.of(context).pop();
-            },
-          ),
-        ],
-      ),
+      firstLabel: firstLabel,
+      firstHint: firstHint,
+      secondLabel: secondLabel,
+      secondHint: secondHint,
+      secondMaxLines: secondMaxLines,
+      onSave: (first, second) => onSave(first, second!),
     ),
-  ).whenComplete(() {
-    firstController.dispose();
-    secondController.dispose();
-  });
+  );
 }
 
-class _SheetFrame extends StatelessWidget {
-  const _SheetFrame({required this.title, required this.child});
+class _EntrySheet extends StatefulWidget {
+  const _EntrySheet({
+    required this.title,
+    required this.firstLabel,
+    required this.firstHint,
+    required this.onSave,
+    this.secondLabel,
+    this.secondHint,
+    this.secondMaxLines = 1,
+  });
 
   final String title;
-  final Widget child;
+  final String firstLabel;
+  final String firstHint;
+  final String? secondLabel;
+  final String? secondHint;
+  final int secondMaxLines;
+  final void Function(String first, String? second) onSave;
+
+  @override
+  State<_EntrySheet> createState() => _EntrySheetState();
+}
+
+class _EntrySheetState extends State<_EntrySheet> {
+  final _firstController = TextEditingController();
+  TextEditingController? _secondController;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.secondLabel != null) {
+      _secondController = TextEditingController();
+    }
+  }
+
+  @override
+  void dispose() {
+    _firstController.dispose();
+    _secondController?.dispose();
+    super.dispose();
+  }
+
+  void _close() => Navigator.of(context).pop();
+
+  void _save() {
+    final first = _firstController.text.trim();
+    final second = _secondController?.text.trim();
+    if (first.isEmpty || (second != null && second.isEmpty)) {
+      return;
+    }
+    widget.onSave(first, second);
+    _close();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -206,28 +200,56 @@ class _SheetFrame extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Schliessen',
+                onPressed: _close,
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
           const SizedBox(height: 18),
-          child,
+          TextField(
+            controller: _firstController,
+            decoration: InputDecoration(
+              labelText: widget.firstLabel,
+              hintText: widget.firstHint,
+            ),
+            autofocus: true,
+          ),
+          if (_secondController != null) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _secondController,
+              maxLines: widget.secondMaxLines,
+              decoration: InputDecoration(
+                labelText: widget.secondLabel,
+                hintText: widget.secondHint,
+              ),
+            ),
+          ],
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              TextButton(onPressed: _close, child: const Text('Abbrechen')),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _save,
+                  icon: const Icon(Icons.check_rounded),
+                  label: const Text('Speichern'),
+                ),
+              ),
+            ],
+          ),
         ],
-      ),
-    );
-  }
-}
-
-class _SaveButton extends StatelessWidget {
-  const _SaveButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: onPressed,
-        icon: const Icon(Icons.check_rounded),
-        label: const Text('Speichern'),
       ),
     );
   }
