@@ -71,51 +71,213 @@ class StudyBuddyController extends Notifier<StudyBuddyState> {
 
   void addTask(String title) {
     final task = TaskItem(id: _id(), title: title);
-    state = state.copyWith(tasks: [...state.tasks, task]);
-    unawaited(_save(ref.read(studyBuddyRepositoryProvider).addTask(task)));
+    unawaited(saveTask(task));
+  }
+
+  Future<void> saveTask(TaskItem task) async {
+    final exists = state.tasks.any((item) => item.id == task.id);
+    state = state.copyWith(
+      tasks: [
+        for (final item in state.tasks)
+          if (item.id == task.id) task else item,
+        if (!exists) task,
+      ],
+    );
+    final repo = ref.read(studyBuddyRepositoryProvider);
+    await _save(exists ? repo.updateTask(task) : repo.addTask(task));
   }
 
   void toggleTask(String id) {
-    TaskItem? updatedTask;
+    final task = state.tasks.where((item) => item.id == id).firstOrNull;
+    if (task == null) return;
+    final now = DateTime.now();
+    final updatedTask = task.done
+        ? task.copyWith(status: TaskStatus.open, completedAt: null)
+        : task.copyWith(status: TaskStatus.completed, completedAt: now);
+    unawaited(saveTask(updatedTask));
+  }
+
+  Future<void> deleteTask(String id) async {
     state = state.copyWith(
       tasks: [
         for (final task in state.tasks)
-          if (task.id == id)
-            updatedTask = task.copyWith(done: !task.done)
-          else
-            task,
+          if (task.id != id) task,
       ],
     );
-
-    if (updatedTask != null) {
-      unawaited(
-        _save(ref.read(studyBuddyRepositoryProvider).updateTask(updatedTask)),
-      );
-    }
+    await _save(ref.read(studyBuddyRepositoryProvider).deleteTask(id));
   }
 
   void addNote(String title, String body) {
     final note = NoteItem(id: _id(), title: title, body: body);
-    state = state.copyWith(notes: [...state.notes, note]);
-    unawaited(_save(ref.read(studyBuddyRepositoryProvider).addNote(note)));
+    unawaited(saveNote(note));
+  }
+
+  Future<void> saveNote(NoteItem note) async {
+    final exists = state.notes.any((item) => item.id == note.id);
+    state = state.copyWith(
+      notes: [
+        for (final item in state.notes)
+          if (item.id == note.id) note else item,
+        if (!exists) note,
+      ],
+    );
+    final repo = ref.read(studyBuddyRepositoryProvider);
+    await _save(exists ? repo.updateNote(note) : repo.addNote(note));
+  }
+
+  Future<void> deleteNote(String id) async {
+    state = state.copyWith(
+      notes: [
+        for (final note in state.notes)
+          if (note.id != id) note,
+      ],
+    );
+    await _save(ref.read(studyBuddyRepositoryProvider).deleteNote(id));
+  }
+
+  Future<NoteFolder?> saveNoteFolder(NoteFolder folder) async {
+    if (_createsFolderCycle(folder)) return null;
+    final exists = state.noteFolders.any((item) => item.id == folder.id);
+    state = state.copyWith(
+      noteFolders: [
+        for (final item in state.noteFolders)
+          if (item.id == folder.id) folder else item,
+        if (!exists) folder,
+      ],
+    );
+    final repo = ref.read(studyBuddyRepositoryProvider);
+    await _save(
+      exists ? repo.updateNoteFolder(folder) : repo.addNoteFolder(folder),
+    );
+    return folder;
+  }
+
+  Future<void> deleteNoteFolder(String id) async {
+    final folderIds = _folderWithDescendants(id);
+    final affectedNotes = state.notes.where(
+      (note) => note.folderId != null && folderIds.contains(note.folderId),
+    );
+    final movedNotes = [
+      for (final note in state.notes)
+        if (note.folderId != null && folderIds.contains(note.folderId))
+          note.copyWith(folderId: null, updatedAt: DateTime.now())
+        else
+          note,
+    ];
+    state = state.copyWith(
+      notes: movedNotes,
+      noteFolders: [
+        for (final folder in state.noteFolders)
+          if (!folderIds.contains(folder.id)) folder,
+      ],
+    );
+    final repo = ref.read(studyBuddyRepositoryProvider);
+    for (final note in affectedNotes) {
+      await _save(
+        repo.updateNote(
+          note.copyWith(folderId: null, updatedAt: DateTime.now()),
+        ),
+      );
+    }
+    for (final folderId in folderIds) {
+      await _save(repo.deleteNoteFolder(folderId));
+    }
+  }
+
+  Set<String> _folderWithDescendants(String id) {
+    final result = <String>{id};
+    var changed = true;
+    while (changed) {
+      changed = false;
+      for (final folder in state.noteFolders) {
+        if (folder.parentFolderId != null &&
+            result.contains(folder.parentFolderId) &&
+            result.add(folder.id)) {
+          changed = true;
+        }
+      }
+    }
+    return result;
+  }
+
+  bool _createsFolderCycle(NoteFolder folder) {
+    final parentId = folder.parentFolderId;
+    if (parentId == null) return false;
+    if (parentId == folder.id) return true;
+    var current = state.noteFolders
+        .where((item) => item.id == parentId)
+        .firstOrNull;
+    while (current != null) {
+      if (current.parentFolderId == folder.id) return true;
+      current = state.noteFolders
+          .where((item) => item.id == current?.parentFolderId)
+          .firstOrNull;
+    }
+    return false;
   }
 
   void addSubject(String name) {
     final subject = SubjectItem(id: _id(), name: name);
+    unawaited(addSubjectItem(subject));
+  }
+
+  Future<SubjectItem> addSubjectItem(SubjectItem subject) async {
     state = state.copyWith(subjects: [...state.subjects, subject]);
-    unawaited(
-      _save(ref.read(studyBuddyRepositoryProvider).addSubject(subject)),
+    await _save(ref.read(studyBuddyRepositoryProvider).addSubject(subject));
+    return subject;
+  }
+
+  Future<void> updateSubjectItem(SubjectItem subject) async {
+    state = state.copyWith(
+      subjects: [
+        for (final item in state.subjects)
+          if (item.id == subject.id) subject else item,
+      ],
     );
+    await _save(ref.read(studyBuddyRepositoryProvider).updateSubject(subject));
+  }
+
+  Future<void> deleteSubjectItem(String id) async {
+    state = state.copyWith(
+      subjects: [
+        for (final subject in state.subjects)
+          if (subject.id != id) subject,
+      ],
+    );
+    await _save(ref.read(studyBuddyRepositoryProvider).deleteSubject(id));
   }
 
   void addExam(String subject, String dateLabel) {
     final exam = ExamOverview(
       id: _id(),
+      title: subject,
       subject: subject,
       dateLabel: dateLabel,
     );
-    state = state.copyWith(exams: [...state.exams, exam]);
-    unawaited(_save(ref.read(studyBuddyRepositoryProvider).addExam(exam)));
+    unawaited(saveExam(exam));
+  }
+
+  Future<void> saveExam(ExamOverview exam) async {
+    final exists = state.exams.any((item) => item.id == exam.id);
+    state = state.copyWith(
+      exams: [
+        for (final item in state.exams)
+          if (item.id == exam.id) exam else item,
+        if (!exists) exam,
+      ],
+    );
+    final repo = ref.read(studyBuddyRepositoryProvider);
+    await _save(exists ? repo.updateExam(exam) : repo.addExam(exam));
+  }
+
+  Future<void> deleteExam(String id) async {
+    state = state.copyWith(
+      exams: [
+        for (final exam in state.exams)
+          if (exam.id != id) exam,
+      ],
+    );
+    await _save(ref.read(studyBuddyRepositoryProvider).deleteExam(id));
   }
 
   void addReminder(String title, String dateLabel) {
@@ -155,4 +317,6 @@ class StudyBuddyController extends Notifier<StudyBuddyState> {
   }
 
   String _id() => DateTime.now().microsecondsSinceEpoch.toString();
+
+  String newId() => _id();
 }

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:rrule/rrule.dart';
 
+import '../../../shared/design_system/study_radius.dart';
+import '../../../theme/app_colors.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../domain/calendar_models.dart';
 import '../domain/calendar_services.dart';
@@ -30,6 +32,24 @@ const categoryColors = <String, int>{
   'Abgabe': 0xFFD48695,
   'Sonstiges': 0xFFA5A5A5,
 };
+const eventColorPalette = <int>[
+  0xFFB56D8C,
+  0xFFD38BAF,
+  0xFFE3A6B5,
+  0xFF9C84BF,
+  0xFFA898C5,
+  0xFF8A9BC4,
+  0xFF83B7C7,
+  0xFF75AFA9,
+  0xFF80A996,
+  0xFF8AA779,
+  0xFFD48695,
+  0xFFE3B778,
+  0xFFAAA583,
+  0xFFC7A27D,
+  0xFF9E9EBD,
+  0xFFA5A5A5,
+];
 const practiceCategories = {
   'Schulpraxis',
   'Hospitation',
@@ -423,9 +443,22 @@ class _CalendarEditorState extends ConsumerState<_CalendarEditor> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 18, 14, 8),
+              padding: const EdgeInsets.fromLTRB(24, 18, 14, 10),
               child: Row(
                 children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.blush,
+                      borderRadius: StudyRadius.medium,
+                    ),
+                    child: const Icon(
+                      Icons.calendar_month_rounded,
+                      color: AppColors.mauve,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       widget.original == null
@@ -450,6 +483,7 @@ class _CalendarEditorState extends ConsumerState<_CalendarEditor> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const _EditorSectionTitle('Grunddaten'),
                       TextFormField(
                         controller: _title,
                         autofocus: true,
@@ -519,7 +553,8 @@ class _CalendarEditorState extends ConsumerState<_CalendarEditor> {
                               setState(() => _subjectId = value),
                         ),
                       ],
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
+                      const _EditorSectionTitle('Zeit'),
                       _dateButton(
                         'Datum',
                         _date,
@@ -565,7 +600,8 @@ class _CalendarEditorState extends ConsumerState<_CalendarEditor> {
                           _endDate,
                           (date) => setState(() => _endDate = date),
                         ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 20),
+                      const _EditorSectionTitle('Details'),
                       TextFormField(
                         controller: _location,
                         decoration: const InputDecoration(labelText: 'Ort'),
@@ -606,7 +642,8 @@ class _CalendarEditorState extends ConsumerState<_CalendarEditor> {
                             ),
                           ),
                       ],
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 20),
+                      const _EditorSectionTitle('Organisation'),
                       Text(
                         'Farbe',
                         style: Theme.of(context).textTheme.titleMedium,
@@ -615,7 +652,7 @@ class _CalendarEditorState extends ConsumerState<_CalendarEditor> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          for (final color in {...categoryColors.values})
+                          for (final color in eventColorPalette)
                             InkWell(
                               onTap: () => setState(() => _color = color),
                               borderRadius: BorderRadius.circular(20),
@@ -1005,5 +1042,23 @@ class _CalendarEditorState extends ConsumerState<_CalendarEditor> {
       ),
     );
     if (color != null && mounted) setState(() => _color = color);
+  }
+}
+
+class _EditorSectionTitle extends StatelessWidget {
+  const _EditorSectionTitle(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelLarge
+            ?.copyWith(color: AppColors.mauve, fontWeight: FontWeight.w800),
+      ),
+    );
   }
 }

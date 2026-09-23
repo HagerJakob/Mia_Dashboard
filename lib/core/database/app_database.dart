@@ -22,6 +22,7 @@ class Tasks extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
   BoolColumn get done => boolean().withDefault(const Constant(false))();
+  TextColumn get taskJson => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -35,6 +36,24 @@ class Notes extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
   TextColumn get body => text().withDefault(const Constant(''))();
+  TextColumn get noteJson => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+  BoolColumn get needsSync => boolean().withDefault(const Constant(true))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+class NoteFolders extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get parentFolderId => text().nullable()();
+  TextColumn get subjectId => text().nullable()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  IntColumn get colorValue =>
+      integer().withDefault(const Constant(0xFFB56D8C))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -63,6 +82,7 @@ class Exams extends Table {
   TextColumn get subject => text()();
   TextColumn get dateLabel => text()();
   RealColumn get progress => real().withDefault(const Constant(0))();
+  TextColumn get examJson => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -103,6 +123,7 @@ class CalendarCategories extends Table {
     ScheduleEntries,
     Tasks,
     Notes,
+    NoteFolders,
     Subjects,
     Exams,
     Reminders,
@@ -114,7 +135,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.withExecutor(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -124,8 +145,100 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(scheduleEntries, scheduleEntries.eventJson);
         await m.createTable(calendarCategories);
       }
+      if (from < 3) {
+        await _createTasksIfMissing();
+        await _addColumnIfMissing('tasks', 'task_json', () {
+          return m.addColumn(tasks, tasks.taskJson);
+        });
+      }
+      if (from < 4) {
+        await _createExamsIfMissing();
+        await _addColumnIfMissing('exams', 'exam_json', () {
+          return m.addColumn(exams, exams.examJson);
+        });
+      }
+      if (from < 5) {
+        await _createNotesIfMissing();
+        await _createNoteFoldersIfMissing();
+        await _addColumnIfMissing('notes', 'note_json', () {
+          return m.addColumn(notes, notes.noteJson);
+        });
+      }
     },
   );
+
+  Future<void> _createTasksIfMissing() {
+    return customStatement('''
+      CREATE TABLE IF NOT EXISTS tasks (
+        id TEXT NOT NULL PRIMARY KEY,
+        title TEXT NOT NULL,
+        done INTEGER NOT NULL DEFAULT 0,
+        task_json TEXT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        deleted_at INTEGER NULL,
+        needs_sync INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
+  }
+
+  Future<void> _createNotesIfMissing() {
+    return customStatement('''
+      CREATE TABLE IF NOT EXISTS notes (
+        id TEXT NOT NULL PRIMARY KEY,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL DEFAULT '',
+        note_json TEXT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        deleted_at INTEGER NULL,
+        needs_sync INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
+  }
+
+  Future<void> _createExamsIfMissing() {
+    return customStatement('''
+      CREATE TABLE IF NOT EXISTS exams (
+        id TEXT NOT NULL PRIMARY KEY,
+        subject TEXT NOT NULL,
+        date_label TEXT NOT NULL,
+        progress REAL NOT NULL DEFAULT 0,
+        exam_json TEXT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        deleted_at INTEGER NULL,
+        needs_sync INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
+  }
+
+  Future<void> _createNoteFoldersIfMissing() {
+    return customStatement('''
+      CREATE TABLE IF NOT EXISTS note_folders (
+        id TEXT NOT NULL PRIMARY KEY,
+        name TEXT NOT NULL,
+        parent_folder_id TEXT NULL,
+        subject_id TEXT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        color_value INTEGER NOT NULL DEFAULT 11955596,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        deleted_at INTEGER NULL,
+        needs_sync INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
+  }
+
+  Future<void> _addColumnIfMissing(
+    String table,
+    String column,
+    Future<void> Function() add,
+  ) async {
+    final columns = await customSelect('PRAGMA table_info($table)').get();
+    final exists = columns.any((row) => row.data['name'] == column);
+    if (!exists) await add();
+  }
 
   Future<List<ScheduleEntry>> activeScheduleEntries() {
     return (select(scheduleEntries)
@@ -145,6 +258,16 @@ class AppDatabase extends _$AppDatabase {
     return (select(notes)
           ..where((note) => note.deletedAt.isNull())
           ..orderBy([(note) => OrderingTerm.desc(note.createdAt)]))
+        .get();
+  }
+
+  Future<List<NoteFolder>> activeNoteFolders() {
+    return (select(noteFolders)
+          ..where((folder) => folder.deletedAt.isNull())
+          ..orderBy([
+            (folder) => OrderingTerm.asc(folder.sortOrder),
+            (folder) => OrderingTerm.asc(folder.name),
+          ]))
         .get();
   }
 

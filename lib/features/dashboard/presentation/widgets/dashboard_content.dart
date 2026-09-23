@@ -48,7 +48,7 @@ class DashboardContent extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const DashboardTopBar(),
-          const SizedBox(height: 26),
+          const SizedBox(height: 24),
           Text(
             'Hallo Mia',
             style: compact
@@ -57,11 +57,11 @@ class DashboardContent extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Schoen, dass du da bist. Dein neues Studium startet hier ganz frisch.',
+            'Schön, dass du da bist. Dein neues Studium startet hier ganz frisch.',
             style: Theme.of(context).textTheme.bodyLarge
                 ?.copyWith(color: AppColors.mutedInk, height: 1.45),
           ),
-          const SizedBox(height: 26),
+          const SizedBox(height: 24),
           _ResponsiveGrid(
             minItemWidth: 190,
             spacing: 16,
@@ -89,7 +89,7 @@ class DashboardContent extends ConsumerWidget {
               ),
               KpiCard(
                 item: KpiItem(
-                  'Naechste Pruefung',
+                  'Nächste Prüfung',
                   state.exams.isEmpty
                       ? 'noch offen'
                       : state.exams.first.dateLabel,
@@ -98,7 +98,7 @@ class DashboardContent extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           _ResponsiveGrid(
             minItemWidth: context.isExpanded ? 280 : 260,
             spacing: 18,
@@ -118,7 +118,7 @@ class DashboardContent extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           _ResponsiveGrid(
             minItemWidth: context.isExpanded ? 260 : 240,
             spacing: 18,
@@ -140,15 +140,16 @@ class DashboardContent extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           const StudyCard(
+            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             child: Row(
               children: [
                 Icon(Icons.auto_awesome_rounded, color: AppColors.mauve),
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Kleine Schritte, grosse Ergebnisse.',
+                    'Kleine Schritte, große Ergebnisse.',
                     style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),

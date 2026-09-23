@@ -6,6 +6,10 @@ import '../../../shared/models/navigation_item.dart';
 import '../../../theme/app_colors.dart';
 import '../../auth/presentation/account_screen.dart';
 import '../../calendar/presentation/calendar_screen.dart';
+import '../../exams/presentation/exams_screen.dart';
+import '../../notes/presentation/notes_screen.dart';
+import '../../subjects/presentation/subjects_screen.dart';
+import '../../tasks/presentation/tasks_screen.dart';
 import '../domain/dashboard_models.dart';
 import 'dashboard_controller.dart';
 import 'widgets/add_entry_sheet.dart';
@@ -21,8 +25,8 @@ class DashboardScreen extends ConsumerWidget {
     StudyNavigationItem(label: 'Kalender', icon: Icons.calendar_month_rounded),
     StudyNavigationItem(label: 'Aufgaben', icon: Icons.checklist_rounded),
     StudyNavigationItem(label: 'Notizen', icon: Icons.edit_note_rounded),
-    StudyNavigationItem(label: 'Faecher', icon: Icons.auto_stories_rounded),
-    StudyNavigationItem(label: 'Pruefungen', icon: Icons.school_rounded),
+    StudyNavigationItem(label: 'Fächer', icon: Icons.auto_stories_rounded),
+    StudyNavigationItem(label: 'Prüfungen', icon: Icons.school_rounded),
     StudyNavigationItem(label: 'Timer', icon: Icons.timer_rounded),
     StudyNavigationItem(label: 'Statistiken', icon: Icons.bar_chart_rounded),
   ];
@@ -36,8 +40,17 @@ class DashboardScreen extends ConsumerWidget {
         .push(MaterialPageRoute<void>(builder: (_) => const AccountScreen()));
 
     if (context.isCompact) {
-      final mobileItems = _items.take(4).toList();
-      final mobileIndex = selectedIndex.clamp(0, mobileItems.length - 1);
+      const mobileIndexes = [0, 1, 2, 3, 4];
+      final mobileItems = [
+        _items[0],
+        _items[1],
+        _items[2],
+        _items[3],
+        _items[4],
+      ];
+      final mobileIndex = mobileIndexes.contains(selectedIndex)
+          ? mobileIndexes.indexOf(selectedIndex)
+          : 0;
 
       return Scaffold(
         appBar: AppBar(
@@ -58,7 +71,8 @@ class DashboardScreen extends ConsumerWidget {
         bottomNavigationBar: StudyBottomNavigation(
           items: mobileItems,
           selectedIndex: mobileIndex,
-          onSelected: controller.selectDestination,
+          onSelected: (index) =>
+              controller.selectDestination(mobileIndexes[index]),
         ),
       );
     }
@@ -101,69 +115,10 @@ class _SelectedDestination extends ConsumerWidget {
     return switch (state.selectedIndex) {
       0 => DashboardContent(state: state),
       1 => const CalendarScreen(),
-      2 => EmptyFeatureScreen(
-        title: 'Aufgaben',
-        message: 'Noch keine Aufgaben. Mia kann hier alles selbst anlegen.',
-        icon: Icons.checklist_rounded,
-        actionLabel: 'Aufgabe erstellen',
-        children: [
-          for (final task in state.tasks)
-            CheckboxListTile(
-              value: task.done,
-              onChanged: (_) => controller.toggleTask(task.id),
-              title: Text(task.title),
-              contentPadding: EdgeInsets.zero,
-            ),
-        ],
-        onAction: () => showTaskSheet(context, controller),
-      ),
-      3 => EmptyFeatureScreen(
-        title: 'Notizen',
-        message: 'Noch keine Notizen. Alles kann frisch aufgebaut werden.',
-        icon: Icons.edit_note_rounded,
-        actionLabel: 'Notiz schreiben',
-        children: [
-          for (final note in state.notes)
-            ListTile(
-              leading: const Icon(Icons.notes_rounded),
-              title: Text(note.title),
-              subtitle: note.body.isEmpty ? null : Text(note.body),
-              contentPadding: EdgeInsets.zero,
-            ),
-        ],
-        onAction: () => showNoteSheet(context, controller),
-      ),
-      4 => EmptyFeatureScreen(
-        title: 'Faecher',
-        message: 'Lege zuerst die Faecher fuer das neue Studium an.',
-        icon: Icons.auto_stories_rounded,
-        actionLabel: 'Fach anlegen',
-        children: [
-          for (final subject in state.subjects)
-            ListTile(
-              leading: CircleAvatar(backgroundColor: subject.color),
-              title: Text(subject.name),
-              contentPadding: EdgeInsets.zero,
-            ),
-        ],
-        onAction: () => showSubjectSheet(context, controller),
-      ),
-      5 => EmptyFeatureScreen(
-        title: 'Pruefungen',
-        message: 'Pruefungen und Deadlines werden hier gesammelt.',
-        icon: Icons.school_rounded,
-        actionLabel: 'Pruefung eintragen',
-        children: [
-          for (final exam in state.exams)
-            ListTile(
-              leading: const Icon(Icons.school_rounded),
-              title: Text(exam.subject),
-              subtitle: Text(exam.dateLabel),
-              contentPadding: EdgeInsets.zero,
-            ),
-        ],
-        onAction: () => showExamSheet(context, controller),
-      ),
+      2 => const TasksScreen(),
+      3 => const NotesScreen(),
+      4 => const SubjectsScreen(),
+      5 => const ExamsScreen(),
       6 => DashboardContent(state: state, focusOnly: true),
       _ => EmptyFeatureScreen(
         title: 'Statistiken',

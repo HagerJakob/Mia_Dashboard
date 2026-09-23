@@ -65,7 +65,7 @@ Future<void> showExamSheet(
 ) {
   return _showTwoFieldSheet(
     context: context,
-    title: 'Pruefung eintragen',
+    title: 'Prüfung eintragen',
     firstLabel: 'Fach',
     secondLabel: 'Datum',
     firstHint: 'Mathematik',
@@ -209,7 +209,7 @@ class _EntrySheetState extends State<_EntrySheet> {
                 ),
               ),
               IconButton(
-                tooltip: 'Schliessen',
+                tooltip: 'Schließen',
                 onPressed: _close,
                 icon: const Icon(Icons.close_rounded),
               ),

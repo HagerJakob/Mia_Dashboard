@@ -550,6 +550,17 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _taskJsonMeta = const VerificationMeta(
+    'taskJson',
+  );
+  @override
+  late final GeneratedColumn<String> taskJson = GeneratedColumn<String>(
+    'task_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -603,6 +614,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     id,
     title,
     done,
+    taskJson,
     createdAt,
     updatedAt,
     deletedAt,
@@ -637,6 +649,12 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
       context.handle(
         _doneMeta,
         done.isAcceptableOrUnknown(data['done']!, _doneMeta),
+      );
+    }
+    if (data.containsKey('task_json')) {
+      context.handle(
+        _taskJsonMeta,
+        taskJson.isAcceptableOrUnknown(data['task_json']!, _taskJsonMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -688,6 +706,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.bool,
         data['${effectivePrefix}done'],
       )!,
+      taskJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_json'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -717,6 +739,7 @@ class Task extends DataClass implements Insertable<Task> {
   final String id;
   final String title;
   final bool done;
+  final String? taskJson;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -725,6 +748,7 @@ class Task extends DataClass implements Insertable<Task> {
     required this.id,
     required this.title,
     required this.done,
+    this.taskJson,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -736,6 +760,9 @@ class Task extends DataClass implements Insertable<Task> {
     map['id'] = Variable<String>(id);
     map['title'] = Variable<String>(title);
     map['done'] = Variable<bool>(done);
+    if (!nullToAbsent || taskJson != null) {
+      map['task_json'] = Variable<String>(taskJson);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
@@ -750,6 +777,9 @@ class Task extends DataClass implements Insertable<Task> {
       id: Value(id),
       title: Value(title),
       done: Value(done),
+      taskJson: taskJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taskJson),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -768,6 +798,7 @@ class Task extends DataClass implements Insertable<Task> {
       id: serializer.fromJson<String>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       done: serializer.fromJson<bool>(json['done']),
+      taskJson: serializer.fromJson<String?>(json['taskJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -781,6 +812,7 @@ class Task extends DataClass implements Insertable<Task> {
       'id': serializer.toJson<String>(id),
       'title': serializer.toJson<String>(title),
       'done': serializer.toJson<bool>(done),
+      'taskJson': serializer.toJson<String?>(taskJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -792,6 +824,7 @@ class Task extends DataClass implements Insertable<Task> {
     String? id,
     String? title,
     bool? done,
+    Value<String?> taskJson = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -800,6 +833,7 @@ class Task extends DataClass implements Insertable<Task> {
     id: id ?? this.id,
     title: title ?? this.title,
     done: done ?? this.done,
+    taskJson: taskJson.present ? taskJson.value : this.taskJson,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -810,6 +844,7 @@ class Task extends DataClass implements Insertable<Task> {
       id: data.id.present ? data.id.value : this.id,
       title: data.title.present ? data.title.value : this.title,
       done: data.done.present ? data.done.value : this.done,
+      taskJson: data.taskJson.present ? data.taskJson.value : this.taskJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -823,6 +858,7 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('done: $done, ')
+          ..write('taskJson: $taskJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -832,8 +868,16 @@ class Task extends DataClass implements Insertable<Task> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, title, done, createdAt, updatedAt, deletedAt, needsSync);
+  int get hashCode => Object.hash(
+    id,
+    title,
+    done,
+    taskJson,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    needsSync,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -841,6 +885,7 @@ class Task extends DataClass implements Insertable<Task> {
           other.id == this.id &&
           other.title == this.title &&
           other.done == this.done &&
+          other.taskJson == this.taskJson &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -851,6 +896,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<String> id;
   final Value<String> title;
   final Value<bool> done;
+  final Value<String?> taskJson;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -860,6 +906,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.done = const Value.absent(),
+    this.taskJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -870,6 +917,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     required String id,
     required String title,
     this.done = const Value.absent(),
+    this.taskJson = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
@@ -883,6 +931,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<String>? id,
     Expression<String>? title,
     Expression<bool>? done,
+    Expression<String>? taskJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -893,6 +942,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (done != null) 'done': done,
+      if (taskJson != null) 'task_json': taskJson,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -905,6 +955,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<String>? id,
     Value<String>? title,
     Value<bool>? done,
+    Value<String?>? taskJson,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -915,6 +966,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       id: id ?? this.id,
       title: title ?? this.title,
       done: done ?? this.done,
+      taskJson: taskJson ?? this.taskJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -934,6 +986,9 @@ class TasksCompanion extends UpdateCompanion<Task> {
     }
     if (done.present) {
       map['done'] = Variable<bool>(done.value);
+    }
+    if (taskJson.present) {
+      map['task_json'] = Variable<String>(taskJson.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -959,6 +1014,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('done: $done, ')
+          ..write('taskJson: $taskJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -1001,6 +1057,17 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, Note> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _noteJsonMeta = const VerificationMeta(
+    'noteJson',
+  );
+  @override
+  late final GeneratedColumn<String> noteJson = GeneratedColumn<String>(
+    'note_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
@@ -1055,6 +1122,7 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, Note> {
     id,
     title,
     body,
+    noteJson,
     createdAt,
     updatedAt,
     deletedAt,
@@ -1089,6 +1157,12 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, Note> {
       context.handle(
         _bodyMeta,
         body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    }
+    if (data.containsKey('note_json')) {
+      context.handle(
+        _noteJsonMeta,
+        noteJson.isAcceptableOrUnknown(data['note_json']!, _noteJsonMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -1140,6 +1214,10 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, Note> {
         DriftSqlType.string,
         data['${effectivePrefix}body'],
       )!,
+      noteJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note_json'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1169,6 +1247,7 @@ class Note extends DataClass implements Insertable<Note> {
   final String id;
   final String title;
   final String body;
+  final String? noteJson;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -1177,6 +1256,7 @@ class Note extends DataClass implements Insertable<Note> {
     required this.id,
     required this.title,
     required this.body,
+    this.noteJson,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -1188,6 +1268,9 @@ class Note extends DataClass implements Insertable<Note> {
     map['id'] = Variable<String>(id);
     map['title'] = Variable<String>(title);
     map['body'] = Variable<String>(body);
+    if (!nullToAbsent || noteJson != null) {
+      map['note_json'] = Variable<String>(noteJson);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
@@ -1202,6 +1285,9 @@ class Note extends DataClass implements Insertable<Note> {
       id: Value(id),
       title: Value(title),
       body: Value(body),
+      noteJson: noteJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(noteJson),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -1220,6 +1306,7 @@ class Note extends DataClass implements Insertable<Note> {
       id: serializer.fromJson<String>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       body: serializer.fromJson<String>(json['body']),
+      noteJson: serializer.fromJson<String?>(json['noteJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -1233,6 +1320,7 @@ class Note extends DataClass implements Insertable<Note> {
       'id': serializer.toJson<String>(id),
       'title': serializer.toJson<String>(title),
       'body': serializer.toJson<String>(body),
+      'noteJson': serializer.toJson<String?>(noteJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -1244,6 +1332,7 @@ class Note extends DataClass implements Insertable<Note> {
     String? id,
     String? title,
     String? body,
+    Value<String?> noteJson = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -1252,6 +1341,7 @@ class Note extends DataClass implements Insertable<Note> {
     id: id ?? this.id,
     title: title ?? this.title,
     body: body ?? this.body,
+    noteJson: noteJson.present ? noteJson.value : this.noteJson,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -1262,6 +1352,7 @@ class Note extends DataClass implements Insertable<Note> {
       id: data.id.present ? data.id.value : this.id,
       title: data.title.present ? data.title.value : this.title,
       body: data.body.present ? data.body.value : this.body,
+      noteJson: data.noteJson.present ? data.noteJson.value : this.noteJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -1275,6 +1366,7 @@ class Note extends DataClass implements Insertable<Note> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('body: $body, ')
+          ..write('noteJson: $noteJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -1284,8 +1376,16 @@ class Note extends DataClass implements Insertable<Note> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, title, body, createdAt, updatedAt, deletedAt, needsSync);
+  int get hashCode => Object.hash(
+    id,
+    title,
+    body,
+    noteJson,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    needsSync,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1293,6 +1393,7 @@ class Note extends DataClass implements Insertable<Note> {
           other.id == this.id &&
           other.title == this.title &&
           other.body == this.body &&
+          other.noteJson == this.noteJson &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -1303,6 +1404,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
   final Value<String> id;
   final Value<String> title;
   final Value<String> body;
+  final Value<String?> noteJson;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -1312,6 +1414,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.body = const Value.absent(),
+    this.noteJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -1322,6 +1425,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
     required String id,
     required String title,
     this.body = const Value.absent(),
+    this.noteJson = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
@@ -1335,6 +1439,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
     Expression<String>? id,
     Expression<String>? title,
     Expression<String>? body,
+    Expression<String>? noteJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -1345,6 +1450,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (body != null) 'body': body,
+      if (noteJson != null) 'note_json': noteJson,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -1357,6 +1463,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
     Value<String>? id,
     Value<String>? title,
     Value<String>? body,
+    Value<String?>? noteJson,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -1367,6 +1474,7 @@ class NotesCompanion extends UpdateCompanion<Note> {
       id: id ?? this.id,
       title: title ?? this.title,
       body: body ?? this.body,
+      noteJson: noteJson ?? this.noteJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -1386,6 +1494,9 @@ class NotesCompanion extends UpdateCompanion<Note> {
     }
     if (body.present) {
       map['body'] = Variable<String>(body.value);
+    }
+    if (noteJson.present) {
+      map['note_json'] = Variable<String>(noteJson.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1411,6 +1522,622 @@ class NotesCompanion extends UpdateCompanion<Note> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('body: $body, ')
+          ..write('noteJson: $noteJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('needsSync: $needsSync, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $NoteFoldersTable extends NoteFolders
+    with TableInfo<$NoteFoldersTable, NoteFolder> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NoteFoldersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _parentFolderIdMeta = const VerificationMeta(
+    'parentFolderId',
+  );
+  @override
+  late final GeneratedColumn<String> parentFolderId = GeneratedColumn<String>(
+    'parent_folder_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _subjectIdMeta = const VerificationMeta(
+    'subjectId',
+  );
+  @override
+  late final GeneratedColumn<String> subjectId = GeneratedColumn<String>(
+    'subject_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _colorValueMeta = const VerificationMeta(
+    'colorValue',
+  );
+  @override
+  late final GeneratedColumn<int> colorValue = GeneratedColumn<int>(
+    'color_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0xFFB56D8C),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _needsSyncMeta = const VerificationMeta(
+    'needsSync',
+  );
+  @override
+  late final GeneratedColumn<bool> needsSync = GeneratedColumn<bool>(
+    'needs_sync',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("needs_sync" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    parentFolderId,
+    subjectId,
+    sortOrder,
+    colorValue,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    needsSync,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'note_folders';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<NoteFolder> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('parent_folder_id')) {
+      context.handle(
+        _parentFolderIdMeta,
+        parentFolderId.isAcceptableOrUnknown(
+          data['parent_folder_id']!,
+          _parentFolderIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('subject_id')) {
+      context.handle(
+        _subjectIdMeta,
+        subjectId.isAcceptableOrUnknown(data['subject_id']!, _subjectIdMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('color_value')) {
+      context.handle(
+        _colorValueMeta,
+        colorValue.isAcceptableOrUnknown(data['color_value']!, _colorValueMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('needs_sync')) {
+      context.handle(
+        _needsSyncMeta,
+        needsSync.isAcceptableOrUnknown(data['needs_sync']!, _needsSyncMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NoteFolder map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NoteFolder(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      parentFolderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parent_folder_id'],
+      ),
+      subjectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subject_id'],
+      ),
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      colorValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}color_value'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      needsSync: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}needs_sync'],
+      )!,
+    );
+  }
+
+  @override
+  $NoteFoldersTable createAlias(String alias) {
+    return $NoteFoldersTable(attachedDatabase, alias);
+  }
+}
+
+class NoteFolder extends DataClass implements Insertable<NoteFolder> {
+  final String id;
+  final String name;
+  final String? parentFolderId;
+  final String? subjectId;
+  final int sortOrder;
+  final int colorValue;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  final bool needsSync;
+  const NoteFolder({
+    required this.id,
+    required this.name,
+    this.parentFolderId,
+    this.subjectId,
+    required this.sortOrder,
+    required this.colorValue,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.needsSync,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || parentFolderId != null) {
+      map['parent_folder_id'] = Variable<String>(parentFolderId);
+    }
+    if (!nullToAbsent || subjectId != null) {
+      map['subject_id'] = Variable<String>(subjectId);
+    }
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['color_value'] = Variable<int>(colorValue);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['needs_sync'] = Variable<bool>(needsSync);
+    return map;
+  }
+
+  NoteFoldersCompanion toCompanion(bool nullToAbsent) {
+    return NoteFoldersCompanion(
+      id: Value(id),
+      name: Value(name),
+      parentFolderId: parentFolderId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentFolderId),
+      subjectId: subjectId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subjectId),
+      sortOrder: Value(sortOrder),
+      colorValue: Value(colorValue),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      needsSync: Value(needsSync),
+    );
+  }
+
+  factory NoteFolder.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NoteFolder(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      parentFolderId: serializer.fromJson<String?>(json['parentFolderId']),
+      subjectId: serializer.fromJson<String?>(json['subjectId']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      colorValue: serializer.fromJson<int>(json['colorValue']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      needsSync: serializer.fromJson<bool>(json['needsSync']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'parentFolderId': serializer.toJson<String?>(parentFolderId),
+      'subjectId': serializer.toJson<String?>(subjectId),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'colorValue': serializer.toJson<int>(colorValue),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'needsSync': serializer.toJson<bool>(needsSync),
+    };
+  }
+
+  NoteFolder copyWith({
+    String? id,
+    String? name,
+    Value<String?> parentFolderId = const Value.absent(),
+    Value<String?> subjectId = const Value.absent(),
+    int? sortOrder,
+    int? colorValue,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    bool? needsSync,
+  }) => NoteFolder(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    parentFolderId: parentFolderId.present
+        ? parentFolderId.value
+        : this.parentFolderId,
+    subjectId: subjectId.present ? subjectId.value : this.subjectId,
+    sortOrder: sortOrder ?? this.sortOrder,
+    colorValue: colorValue ?? this.colorValue,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    needsSync: needsSync ?? this.needsSync,
+  );
+  NoteFolder copyWithCompanion(NoteFoldersCompanion data) {
+    return NoteFolder(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      parentFolderId: data.parentFolderId.present
+          ? data.parentFolderId.value
+          : this.parentFolderId,
+      subjectId: data.subjectId.present ? data.subjectId.value : this.subjectId,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      colorValue: data.colorValue.present
+          ? data.colorValue.value
+          : this.colorValue,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      needsSync: data.needsSync.present ? data.needsSync.value : this.needsSync,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NoteFolder(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('parentFolderId: $parentFolderId, ')
+          ..write('subjectId: $subjectId, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('needsSync: $needsSync')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    parentFolderId,
+    subjectId,
+    sortOrder,
+    colorValue,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    needsSync,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NoteFolder &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.parentFolderId == this.parentFolderId &&
+          other.subjectId == this.subjectId &&
+          other.sortOrder == this.sortOrder &&
+          other.colorValue == this.colorValue &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.needsSync == this.needsSync);
+}
+
+class NoteFoldersCompanion extends UpdateCompanion<NoteFolder> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String?> parentFolderId;
+  final Value<String?> subjectId;
+  final Value<int> sortOrder;
+  final Value<int> colorValue;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<bool> needsSync;
+  final Value<int> rowid;
+  const NoteFoldersCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.parentFolderId = const Value.absent(),
+    this.subjectId = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.colorValue = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.needsSync = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  NoteFoldersCompanion.insert({
+    required String id,
+    required String name,
+    this.parentFolderId = const Value.absent(),
+    this.subjectId = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.colorValue = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.needsSync = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<NoteFolder> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? parentFolderId,
+    Expression<String>? subjectId,
+    Expression<int>? sortOrder,
+    Expression<int>? colorValue,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<bool>? needsSync,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (parentFolderId != null) 'parent_folder_id': parentFolderId,
+      if (subjectId != null) 'subject_id': subjectId,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (colorValue != null) 'color_value': colorValue,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (needsSync != null) 'needs_sync': needsSync,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  NoteFoldersCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String?>? parentFolderId,
+    Value<String?>? subjectId,
+    Value<int>? sortOrder,
+    Value<int>? colorValue,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<bool>? needsSync,
+    Value<int>? rowid,
+  }) {
+    return NoteFoldersCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      parentFolderId: parentFolderId ?? this.parentFolderId,
+      subjectId: subjectId ?? this.subjectId,
+      sortOrder: sortOrder ?? this.sortOrder,
+      colorValue: colorValue ?? this.colorValue,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      needsSync: needsSync ?? this.needsSync,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (parentFolderId.present) {
+      map['parent_folder_id'] = Variable<String>(parentFolderId.value);
+    }
+    if (subjectId.present) {
+      map['subject_id'] = Variable<String>(subjectId.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (colorValue.present) {
+      map['color_value'] = Variable<int>(colorValue.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (needsSync.present) {
+      map['needs_sync'] = Variable<bool>(needsSync.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NoteFoldersCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('parentFolderId: $parentFolderId, ')
+          ..write('subjectId: $subjectId, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('colorValue: $colorValue, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -1932,6 +2659,17 @@ class $ExamsTable extends Exams with TableInfo<$ExamsTable, Exam> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _examJsonMeta = const VerificationMeta(
+    'examJson',
+  );
+  @override
+  late final GeneratedColumn<String> examJson = GeneratedColumn<String>(
+    'exam_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1986,6 +2724,7 @@ class $ExamsTable extends Exams with TableInfo<$ExamsTable, Exam> {
     subject,
     dateLabel,
     progress,
+    examJson,
     createdAt,
     updatedAt,
     deletedAt,
@@ -2028,6 +2767,12 @@ class $ExamsTable extends Exams with TableInfo<$ExamsTable, Exam> {
       context.handle(
         _progressMeta,
         progress.isAcceptableOrUnknown(data['progress']!, _progressMeta),
+      );
+    }
+    if (data.containsKey('exam_json')) {
+      context.handle(
+        _examJsonMeta,
+        examJson.isAcceptableOrUnknown(data['exam_json']!, _examJsonMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -2083,6 +2828,10 @@ class $ExamsTable extends Exams with TableInfo<$ExamsTable, Exam> {
         DriftSqlType.double,
         data['${effectivePrefix}progress'],
       )!,
+      examJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}exam_json'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2113,6 +2862,7 @@ class Exam extends DataClass implements Insertable<Exam> {
   final String subject;
   final String dateLabel;
   final double progress;
+  final String? examJson;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -2122,6 +2872,7 @@ class Exam extends DataClass implements Insertable<Exam> {
     required this.subject,
     required this.dateLabel,
     required this.progress,
+    this.examJson,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -2134,6 +2885,9 @@ class Exam extends DataClass implements Insertable<Exam> {
     map['subject'] = Variable<String>(subject);
     map['date_label'] = Variable<String>(dateLabel);
     map['progress'] = Variable<double>(progress);
+    if (!nullToAbsent || examJson != null) {
+      map['exam_json'] = Variable<String>(examJson);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
@@ -2149,6 +2903,9 @@ class Exam extends DataClass implements Insertable<Exam> {
       subject: Value(subject),
       dateLabel: Value(dateLabel),
       progress: Value(progress),
+      examJson: examJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(examJson),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -2168,6 +2925,7 @@ class Exam extends DataClass implements Insertable<Exam> {
       subject: serializer.fromJson<String>(json['subject']),
       dateLabel: serializer.fromJson<String>(json['dateLabel']),
       progress: serializer.fromJson<double>(json['progress']),
+      examJson: serializer.fromJson<String?>(json['examJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -2182,6 +2940,7 @@ class Exam extends DataClass implements Insertable<Exam> {
       'subject': serializer.toJson<String>(subject),
       'dateLabel': serializer.toJson<String>(dateLabel),
       'progress': serializer.toJson<double>(progress),
+      'examJson': serializer.toJson<String?>(examJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -2194,6 +2953,7 @@ class Exam extends DataClass implements Insertable<Exam> {
     String? subject,
     String? dateLabel,
     double? progress,
+    Value<String?> examJson = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> deletedAt = const Value.absent(),
@@ -2203,6 +2963,7 @@ class Exam extends DataClass implements Insertable<Exam> {
     subject: subject ?? this.subject,
     dateLabel: dateLabel ?? this.dateLabel,
     progress: progress ?? this.progress,
+    examJson: examJson.present ? examJson.value : this.examJson,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -2214,6 +2975,7 @@ class Exam extends DataClass implements Insertable<Exam> {
       subject: data.subject.present ? data.subject.value : this.subject,
       dateLabel: data.dateLabel.present ? data.dateLabel.value : this.dateLabel,
       progress: data.progress.present ? data.progress.value : this.progress,
+      examJson: data.examJson.present ? data.examJson.value : this.examJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -2228,6 +2990,7 @@ class Exam extends DataClass implements Insertable<Exam> {
           ..write('subject: $subject, ')
           ..write('dateLabel: $dateLabel, ')
           ..write('progress: $progress, ')
+          ..write('examJson: $examJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -2242,6 +3005,7 @@ class Exam extends DataClass implements Insertable<Exam> {
     subject,
     dateLabel,
     progress,
+    examJson,
     createdAt,
     updatedAt,
     deletedAt,
@@ -2255,6 +3019,7 @@ class Exam extends DataClass implements Insertable<Exam> {
           other.subject == this.subject &&
           other.dateLabel == this.dateLabel &&
           other.progress == this.progress &&
+          other.examJson == this.examJson &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -2266,6 +3031,7 @@ class ExamsCompanion extends UpdateCompanion<Exam> {
   final Value<String> subject;
   final Value<String> dateLabel;
   final Value<double> progress;
+  final Value<String?> examJson;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
@@ -2276,6 +3042,7 @@ class ExamsCompanion extends UpdateCompanion<Exam> {
     this.subject = const Value.absent(),
     this.dateLabel = const Value.absent(),
     this.progress = const Value.absent(),
+    this.examJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -2287,6 +3054,7 @@ class ExamsCompanion extends UpdateCompanion<Exam> {
     required String subject,
     required String dateLabel,
     this.progress = const Value.absent(),
+    this.examJson = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
@@ -2302,6 +3070,7 @@ class ExamsCompanion extends UpdateCompanion<Exam> {
     Expression<String>? subject,
     Expression<String>? dateLabel,
     Expression<double>? progress,
+    Expression<String>? examJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
@@ -2313,6 +3082,7 @@ class ExamsCompanion extends UpdateCompanion<Exam> {
       if (subject != null) 'subject': subject,
       if (dateLabel != null) 'date_label': dateLabel,
       if (progress != null) 'progress': progress,
+      if (examJson != null) 'exam_json': examJson,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -2326,6 +3096,7 @@ class ExamsCompanion extends UpdateCompanion<Exam> {
     Value<String>? subject,
     Value<String>? dateLabel,
     Value<double>? progress,
+    Value<String?>? examJson,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? deletedAt,
@@ -2337,6 +3108,7 @@ class ExamsCompanion extends UpdateCompanion<Exam> {
       subject: subject ?? this.subject,
       dateLabel: dateLabel ?? this.dateLabel,
       progress: progress ?? this.progress,
+      examJson: examJson ?? this.examJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -2359,6 +3131,9 @@ class ExamsCompanion extends UpdateCompanion<Exam> {
     }
     if (progress.present) {
       map['progress'] = Variable<double>(progress.value);
+    }
+    if (examJson.present) {
+      map['exam_json'] = Variable<String>(examJson.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -2385,6 +3160,7 @@ class ExamsCompanion extends UpdateCompanion<Exam> {
           ..write('subject: $subject, ')
           ..write('dateLabel: $dateLabel, ')
           ..write('progress: $progress, ')
+          ..write('examJson: $examJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -3334,6 +4110,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $TasksTable tasks = $TasksTable(this);
   late final $NotesTable notes = $NotesTable(this);
+  late final $NoteFoldersTable noteFolders = $NoteFoldersTable(this);
   late final $SubjectsTable subjects = $SubjectsTable(this);
   late final $ExamsTable exams = $ExamsTable(this);
   late final $RemindersTable reminders = $RemindersTable(this);
@@ -3347,6 +4124,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     scheduleEntries,
     tasks,
     notes,
+    noteFolders,
     subjects,
     exams,
     reminders,
@@ -3626,6 +4404,7 @@ typedef $$TasksTableCreateCompanionBuilder = TasksCompanion Function({
   required String id,
   required String title,
   Value<bool> done,
+  Value<String?> taskJson,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<DateTime?> deletedAt,
@@ -3636,6 +4415,7 @@ typedef $$TasksTableUpdateCompanionBuilder = TasksCompanion Function({
   Value<String> id,
   Value<String> title,
   Value<bool> done,
+  Value<String?> taskJson,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
@@ -3663,6 +4443,11 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<bool> get done => $composableBuilder(
     column: $table.done,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get taskJson => $composableBuilder(
+    column: $table.taskJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3711,6 +4496,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get taskJson => $composableBuilder(
+    column: $table.taskJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -3749,6 +4539,9 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<bool> get done =>
       $composableBuilder(column: $table.done, builder: (column) => column);
+
+  GeneratedColumn<String> get taskJson =>
+      $composableBuilder(column: $table.taskJson, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -3794,6 +4587,7 @@ class $$TasksTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<bool> done = const Value.absent(),
+                Value<String?> taskJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -3803,6 +4597,7 @@ class $$TasksTableTableManager
                 id: id,
                 title: title,
                 done: done,
+                taskJson: taskJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -3814,6 +4609,7 @@ class $$TasksTableTableManager
                 required String id,
                 required String title,
                 Value<bool> done = const Value.absent(),
+                Value<String?> taskJson = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -3823,6 +4619,7 @@ class $$TasksTableTableManager
                 id: id,
                 title: title,
                 done: done,
+                taskJson: taskJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -3864,6 +4661,7 @@ typedef $$NotesTableCreateCompanionBuilder = NotesCompanion Function({
   required String id,
   required String title,
   Value<String> body,
+  Value<String?> noteJson,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<DateTime?> deletedAt,
@@ -3874,6 +4672,7 @@ typedef $$NotesTableUpdateCompanionBuilder = NotesCompanion Function({
   Value<String> id,
   Value<String> title,
   Value<String> body,
+  Value<String?> noteJson,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
@@ -3901,6 +4700,11 @@ class $$NotesTableFilterComposer extends Composer<_$AppDatabase, $NotesTable> {
 
   ColumnFilters<String> get body => $composableBuilder(
     column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get noteJson => $composableBuilder(
+    column: $table.noteJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3949,6 +4753,11 @@ class $$NotesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get noteJson => $composableBuilder(
+    column: $table.noteJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -3987,6 +4796,9 @@ class $$NotesTableAnnotationComposer
 
   GeneratedColumn<String> get body =>
       $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<String> get noteJson =>
+      $composableBuilder(column: $table.noteJson, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4032,6 +4844,7 @@ class $$NotesTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> body = const Value.absent(),
+                Value<String?> noteJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -4041,6 +4854,7 @@ class $$NotesTableTableManager
                 id: id,
                 title: title,
                 body: body,
+                noteJson: noteJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -4052,6 +4866,7 @@ class $$NotesTableTableManager
                 required String id,
                 required String title,
                 Value<String> body = const Value.absent(),
+                Value<String?> noteJson = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -4061,6 +4876,7 @@ class $$NotesTableTableManager
                 id: id,
                 title: title,
                 body: body,
+                noteJson: noteJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -4096,6 +4912,314 @@ typedef $$NotesTableProcessedTableManager =
       $$NotesTableUpdateCompanionBuilder,
       (Note, BaseReferences<_$AppDatabase, $NotesTable, Note>),
       Note,
+      PrefetchHooks Function()
+    >;
+typedef $$NoteFoldersTableCreateCompanionBuilder =
+    NoteFoldersCompanion Function({
+      required String id,
+      required String name,
+      Value<String?> parentFolderId,
+      Value<String?> subjectId,
+      Value<int> sortOrder,
+      Value<int> colorValue,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<bool> needsSync,
+      Value<int> rowid,
+    });
+typedef $$NoteFoldersTableUpdateCompanionBuilder =
+    NoteFoldersCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String?> parentFolderId,
+      Value<String?> subjectId,
+      Value<int> sortOrder,
+      Value<int> colorValue,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<bool> needsSync,
+      Value<int> rowid,
+    });
+
+class $$NoteFoldersTableFilterComposer
+    extends Composer<_$AppDatabase, $NoteFoldersTable> {
+  $$NoteFoldersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get parentFolderId => $composableBuilder(
+    column: $table.parentFolderId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subjectId => $composableBuilder(
+    column: $table.subjectId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get needsSync => $composableBuilder(
+    column: $table.needsSync,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$NoteFoldersTableOrderingComposer
+    extends Composer<_$AppDatabase, $NoteFoldersTable> {
+  $$NoteFoldersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get parentFolderId => $composableBuilder(
+    column: $table.parentFolderId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subjectId => $composableBuilder(
+    column: $table.subjectId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get needsSync => $composableBuilder(
+    column: $table.needsSync,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$NoteFoldersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NoteFoldersTable> {
+  $$NoteFoldersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get parentFolderId => $composableBuilder(
+    column: $table.parentFolderId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get subjectId =>
+      $composableBuilder(column: $table.subjectId, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get needsSync =>
+      $composableBuilder(column: $table.needsSync, builder: (column) => column);
+}
+
+class $$NoteFoldersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NoteFoldersTable,
+          NoteFolder,
+          $$NoteFoldersTableFilterComposer,
+          $$NoteFoldersTableOrderingComposer,
+          $$NoteFoldersTableAnnotationComposer,
+          $$NoteFoldersTableCreateCompanionBuilder,
+          $$NoteFoldersTableUpdateCompanionBuilder,
+          (
+            NoteFolder,
+            BaseReferences<_$AppDatabase, $NoteFoldersTable, NoteFolder>,
+          ),
+          NoteFolder,
+          PrefetchHooks Function()
+        > {
+  $$NoteFoldersTableTableManager(_$AppDatabase db, $NoteFoldersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NoteFoldersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NoteFoldersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NoteFoldersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> parentFolderId = const Value.absent(),
+                Value<String?> subjectId = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<int> colorValue = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<bool> needsSync = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NoteFoldersCompanion(
+                id: id,
+                name: name,
+                parentFolderId: parentFolderId,
+                subjectId: subjectId,
+                sortOrder: sortOrder,
+                colorValue: colorValue,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                needsSync: needsSync,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<String?> parentFolderId = const Value.absent(),
+                Value<String?> subjectId = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<int> colorValue = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<bool> needsSync = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NoteFoldersCompanion.insert(
+                id: id,
+                name: name,
+                parentFolderId: parentFolderId,
+                subjectId: subjectId,
+                sortOrder: sortOrder,
+                colorValue: colorValue,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                needsSync: needsSync,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$NoteFoldersTable, NoteFolder>(table),
+                  BaseReferences<_$AppDatabase, $NoteFoldersTable, NoteFolder>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$NoteFoldersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NoteFoldersTable,
+      NoteFolder,
+      $$NoteFoldersTableFilterComposer,
+      $$NoteFoldersTableOrderingComposer,
+      $$NoteFoldersTableAnnotationComposer,
+      $$NoteFoldersTableCreateCompanionBuilder,
+      $$NoteFoldersTableUpdateCompanionBuilder,
+      (
+        NoteFolder,
+        BaseReferences<_$AppDatabase, $NoteFoldersTable, NoteFolder>,
+      ),
+      NoteFolder,
       PrefetchHooks Function()
     >;
 typedef $$SubjectsTableCreateCompanionBuilder = SubjectsCompanion Function({
@@ -4344,6 +5468,7 @@ typedef $$ExamsTableCreateCompanionBuilder = ExamsCompanion Function({
   required String subject,
   required String dateLabel,
   Value<double> progress,
+  Value<String?> examJson,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<DateTime?> deletedAt,
@@ -4355,6 +5480,7 @@ typedef $$ExamsTableUpdateCompanionBuilder = ExamsCompanion Function({
   Value<String> subject,
   Value<String> dateLabel,
   Value<double> progress,
+  Value<String?> examJson,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
@@ -4387,6 +5513,11 @@ class $$ExamsTableFilterComposer extends Composer<_$AppDatabase, $ExamsTable> {
 
   ColumnFilters<double> get progress => $composableBuilder(
     column: $table.progress,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get examJson => $composableBuilder(
+    column: $table.examJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4440,6 +5571,11 @@ class $$ExamsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get examJson => $composableBuilder(
+    column: $table.examJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4481,6 +5617,9 @@ class $$ExamsTableAnnotationComposer
 
   GeneratedColumn<double> get progress =>
       $composableBuilder(column: $table.progress, builder: (column) => column);
+
+  GeneratedColumn<String> get examJson =>
+      $composableBuilder(column: $table.examJson, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4527,6 +5666,7 @@ class $$ExamsTableTableManager
                 Value<String> subject = const Value.absent(),
                 Value<String> dateLabel = const Value.absent(),
                 Value<double> progress = const Value.absent(),
+                Value<String?> examJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -4537,6 +5677,7 @@ class $$ExamsTableTableManager
                 subject: subject,
                 dateLabel: dateLabel,
                 progress: progress,
+                examJson: examJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -4549,6 +5690,7 @@ class $$ExamsTableTableManager
                 required String subject,
                 required String dateLabel,
                 Value<double> progress = const Value.absent(),
+                Value<String?> examJson = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<DateTime?> deletedAt = const Value.absent(),
@@ -4559,6 +5701,7 @@ class $$ExamsTableTableManager
                 subject: subject,
                 dateLabel: dateLabel,
                 progress: progress,
+                examJson: examJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -5109,6 +6252,8 @@ class $AppDatabaseManager {
       $$TasksTableTableManager(_db, _db.tasks);
   $$NotesTableTableManager get notes =>
       $$NotesTableTableManager(_db, _db.notes);
+  $$NoteFoldersTableTableManager get noteFolders =>
+      $$NoteFoldersTableTableManager(_db, _db.noteFolders);
   $$SubjectsTableTableManager get subjects =>
       $$SubjectsTableTableManager(_db, _db.subjects);
   $$ExamsTableTableManager get exams =>

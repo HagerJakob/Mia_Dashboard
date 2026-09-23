@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../shared/design_system/study_badge.dart';
+import '../../../shared/design_system/study_card.dart';
+import '../../../shared/design_system/study_radius.dart';
 import '../../../theme/app_colors.dart';
 import '../domain/calendar_models.dart';
+import 'academic_period_editor.dart';
 import 'calendar_controller.dart';
 import 'calendar_editor.dart';
-import 'academic_period_editor.dart';
 import 'calendar_views.dart';
 
 class CalendarScreen extends ConsumerWidget {
@@ -17,6 +20,7 @@ class CalendarScreen extends ConsumerWidget {
     final state = ref.watch(calendarControllerProvider);
     final controller = ref.read(calendarControllerProvider.notifier);
     final compact = MediaQuery.sizeOf(context).width < 700;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       floatingActionButton: compact
@@ -40,145 +44,154 @@ class CalendarScreen extends ConsumerWidget {
                 compact ? 16 : 28,
                 12,
               ),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  IconButton(
-                    tooltip: 'Zurück',
-                    onPressed: () => compact && state.view == CalendarView.week
-                        ? controller.selectDate(
-                            DateTime(
-                              state.selectedDate.year,
-                              state.selectedDate.month,
-                              state.selectedDate.day - 3,
-                            ),
-                          )
-                        : controller.move(-1),
-                    icon: const Icon(Icons.chevron_left_rounded),
-                  ),
-                  OutlinedButton(
-                    onPressed: controller.today,
-                    child: const Text('Heute'),
-                  ),
-                  IconButton(
-                    tooltip: 'Weiter',
-                    onPressed: () => compact && state.view == CalendarView.week
-                        ? controller.selectDate(
-                            DateTime(
-                              state.selectedDate.year,
-                              state.selectedDate.month,
-                              state.selectedDate.day + 3,
-                            ),
-                          )
-                        : controller.move(1),
-                    icon: const Icon(Icons.chevron_right_rounded),
-                  ),
-                  TextButton.icon(
-                    onPressed: () =>
-                        _jumpToMonth(context, controller, state.selectedDate),
-                    iconAlignment: IconAlignment.end,
-                    icon: const Icon(Icons.expand_more_rounded),
-                    label: Text(
-                      DateFormat(
-                        'MMMM yyyy',
-                        'de_AT',
-                      ).format(state.selectedDate),
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  if (!compact) const SizedBox(width: 18),
-                  SegmentedButton<CalendarView>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(
-                        value: CalendarView.month,
-                        label: Text('Monat'),
-                      ),
-                      ButtonSegment(
-                        value: CalendarView.week,
-                        label: Text('Woche'),
-                      ),
-                      ButtonSegment(
-                        value: CalendarView.day,
-                        label: Text('Tag'),
-                      ),
-                      ButtonSegment(
-                        value: CalendarView.agenda,
-                        label: Text('Agenda'),
-                      ),
-                    ],
-                    selected: {state.view},
-                    onSelectionChanged: (value) =>
-                        controller.setView(value.first),
-                  ),
-                  PopupMenuButton<CalendarSource>(
-                    tooltip: 'Kalenderquellen',
-                    icon: const Icon(Icons.layers_outlined),
-                    itemBuilder: (_) => [
-                      for (final (source, label) in [
-                        (CalendarSource.user, 'Meine Termine'),
-                        (CalendarSource.phSalzburg, 'PH Salzburg'),
-                        (
-                          CalendarSource.austrianHoliday,
-                          'Österreichische Feiertage',
+              child: StudyCard(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 12 : 14,
+                  vertical: 10,
+                ),
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _ToolbarCluster(
+                      children: [
+                        IconButton(
+                          tooltip: 'Zurück',
+                          onPressed: () =>
+                              compact && state.view == CalendarView.week
+                              ? controller.selectDate(
+                                  DateTime(
+                                    state.selectedDate.year,
+                                    state.selectedDate.month,
+                                    state.selectedDate.day - 3,
+                                  ),
+                                )
+                              : controller.move(-1),
+                          icon: const Icon(Icons.chevron_left_rounded),
                         ),
-                        (CalendarSource.academicPeriod, 'Hochschulferien'),
-                        (
-                          CalendarSource.salzburgSchoolHolidays,
-                          'Salzburger Schulferien',
+                        TextButton(
+                          onPressed: controller.today,
+                          child: const Text('Heute'),
                         ),
-                      ])
-                        CheckedPopupMenuItem(
-                          value: source,
-                          checked: state.visibleSources.contains(source),
-                          child: Text(label),
+                        IconButton(
+                          tooltip: 'Weiter',
+                          onPressed: () =>
+                              compact && state.view == CalendarView.week
+                              ? controller.selectDate(
+                                  DateTime(
+                                    state.selectedDate.year,
+                                    state.selectedDate.month,
+                                    state.selectedDate.day + 3,
+                                  ),
+                                )
+                              : controller.move(1),
+                          icon: const Icon(Icons.chevron_right_rounded),
                         ),
-                    ],
-                    onSelected: (source) => controller.toggleSource(
-                      source,
-                      !state.visibleSources.contains(source),
+                      ],
                     ),
-                  ),
-                  IconButton(
-                    tooltip: 'Hochschulzeitraum hinzufügen',
-                    onPressed: () => showAcademicPeriodEditor(
-                      context,
-                      ref,
-                      initialDate: state.selectedDate,
+                    TextButton.icon(
+                      onPressed: () =>
+                          _jumpToMonth(context, controller, state.selectedDate),
+                      iconAlignment: IconAlignment.end,
+                      icon: const Icon(Icons.expand_more_rounded),
+                      label: Text(
+                        DateFormat(
+                          'MMMM yyyy',
+                          'de_AT',
+                        ).format(state.selectedDate),
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
                     ),
-                    icon: const Icon(Icons.school_outlined),
-                  ),
-                  if (!compact)
-                    FilledButton.icon(
-                      onPressed: () => showCalendarEditor(
+                    SegmentedButton<CalendarView>(
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(
+                          value: CalendarView.month,
+                          label: Text('Monat'),
+                        ),
+                        ButtonSegment(
+                          value: CalendarView.week,
+                          label: Text('Woche'),
+                        ),
+                        ButtonSegment(
+                          value: CalendarView.day,
+                          label: Text('Tag'),
+                        ),
+                        ButtonSegment(
+                          value: CalendarView.agenda,
+                          label: Text('Agenda'),
+                        ),
+                      ],
+                      selected: {state.view},
+                      onSelectionChanged: (value) =>
+                          controller.setView(value.first),
+                    ),
+                    PopupMenuButton<CalendarSource>(
+                      tooltip: 'Kalenderquellen',
+                      icon: const Icon(Icons.layers_outlined),
+                      itemBuilder: (_) => [
+                        for (final (source, label) in [
+                          (CalendarSource.user, 'Meine Termine'),
+                          (CalendarSource.phSalzburg, 'PH Salzburg'),
+                          (
+                            CalendarSource.austrianHoliday,
+                            'Österreichische Feiertage',
+                          ),
+                          (CalendarSource.academicPeriod, 'Hochschulferien'),
+                          (
+                            CalendarSource.salzburgSchoolHolidays,
+                            'Salzburger Schulferien',
+                          ),
+                        ])
+                          CheckedPopupMenuItem(
+                            value: source,
+                            checked: state.visibleSources.contains(source),
+                            child: Text(label),
+                          ),
+                      ],
+                      onSelected: (source) => controller.toggleSource(
+                        source,
+                        !state.visibleSources.contains(source),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Hochschulzeitraum hinzufügen',
+                      onPressed: () => showAcademicPeriodEditor(
                         context,
                         ref,
                         initialDate: state.selectedDate,
                       ),
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Neuer Termin'),
+                      icon: const Icon(Icons.school_outlined),
                     ),
-                ],
+                    if (!compact)
+                      FilledButton.icon(
+                        onPressed: () => showCalendarEditor(
+                          context,
+                          ref,
+                          initialDate: state.selectedDate,
+                        ),
+                        icon: const Icon(Icons.add_rounded),
+                        label: const Text('Neuer Termin'),
+                      ),
+                  ],
+                ),
               ),
             ),
-            if (state.selectedDate.year == 2026 &&
-                    state.selectedDate.month == 9 ||
+            if ((state.selectedDate.year == 2026 &&
+                    state.selectedDate.month == 9) ||
                 controller.timeline.label(state.selectedDate) != null)
               Align(
                 alignment: Alignment.centerLeft,
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(compact ? 16 : 28, 0, 12, 10),
-                  child: Text(
-                    state.selectedDate.year == 2026 &&
+                  child: StudyBadge(
+                    icon: Icons.favorite_rounded,
+                    label:
+                        state.selectedDate.year == 2026 &&
                             state.selectedDate.month == 9
                         ? 'Studienstart · PH Salzburg'
                         : controller.timeline.label(state.selectedDate)!,
-                    style: const TextStyle(
-                      color: AppColors.mutedInk,
-                      fontWeight: FontWeight.w600,
-                    ),
                   ),
                 ),
               ),
@@ -255,5 +268,23 @@ class CalendarScreen extends ConsumerWidget {
       ),
     );
     if (picked != null) controller.selectDate(picked);
+  }
+}
+
+class _ToolbarCluster extends StatelessWidget {
+  const _ToolbarCluster({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: StudyRadius.medium,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: children),
+    );
   }
 }

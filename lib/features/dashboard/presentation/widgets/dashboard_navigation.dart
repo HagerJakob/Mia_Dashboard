@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/models/navigation_item.dart';
+import '../../../../shared/design_system/study_radius.dart';
 import '../../../../theme/app_colors.dart';
 
 class StudySidebar extends StatelessWidget {
@@ -21,18 +22,25 @@ class StudySidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 248,
-      margin: const EdgeInsets.all(18),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: StudyRadius.large,
         border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .025),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _Logo(),
-          const SizedBox(height: 28),
+          const SizedBox(height: 22),
           for (var index = 0; index < items.length; index++)
             _SidebarTile(
               item: items[index],
@@ -47,6 +55,8 @@ class StudySidebar extends StatelessWidget {
             ),
             onTap: onSettings,
           ),
+          const SizedBox(height: 10),
+          const _SyncPill(),
         ],
       ),
     );
@@ -135,7 +145,7 @@ class _Logo extends StatelessWidget {
           width: 46,
           decoration: BoxDecoration(
             color: AppColors.blush,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: StudyRadius.medium,
           ),
           child: const Icon(Icons.favorite_rounded, color: AppColors.mauve),
         ),
@@ -144,7 +154,10 @@ class _Logo extends StatelessWidget {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text('StudyBuddy', style: Theme.of(context).textTheme.titleLarge),
+            child: Text(
+              'StudyBuddy',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
           ),
         ),
       ],
@@ -164,10 +177,13 @@ class _SidebarTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: selected ? AppColors.blush : Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
+        color: selected ? AppColors.blush : AppColors.surface,
+        borderRadius: StudyRadius.medium,
         child: ListTile(
+          hoverColor: AppColors.blush.withValues(alpha: .45),
           dense: true,
+          minLeadingWidth: 22,
+          visualDensity: VisualDensity.compact,
           onTap: onTap,
           leading: Icon(
             item.icon,
@@ -182,6 +198,38 @@ class _SidebarTile extends StatelessWidget {
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         ),
+      ),
+    );
+  }
+}
+
+class _SyncPill extends StatelessWidget {
+  const _SyncPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.mint.withValues(alpha: .55),
+        borderRadius: StudyRadius.medium,
+        border: Border.all(color: AppColors.sage.withValues(alpha: .18)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.cloud_done_outlined, size: 18, color: AppColors.sage),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Lokal bereit',
+              style: TextStyle(
+                color: AppColors.mutedInk,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

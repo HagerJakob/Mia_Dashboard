@@ -44,7 +44,7 @@ class EmptyFeatureScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  children.isEmpty ? 'Noch leer' : 'Deine Eintraege',
+                  children.isEmpty ? 'Noch leer' : 'Deine Einträge',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 8),

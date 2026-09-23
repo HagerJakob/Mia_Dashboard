@@ -35,6 +35,40 @@ void main() {
     expect(nextDay(DateTime(2028, 2, 28)), DateTime(2028, 2, 29));
   });
 
+  test('visible month grid keeps surrounding months empty', () {
+    final september = visibleMonthGrid(DateTime(2026, 9));
+    expect(september, hasLength(35));
+    expect(september.first, isNull);
+    expect(september[1], DateTime(2026, 9, 1));
+    expect(september.whereType<DateTime>().first, DateTime(2026, 9, 1));
+    expect(september.whereType<DateTime>().last, DateTime(2026, 9, 30));
+    expect(
+      september.any((date) => date?.month == 8 || date?.month == 10),
+      isFalse,
+    );
+
+    final mondayStart = visibleMonthGrid(DateTime(2027, 2));
+    expect(mondayStart.first, DateTime(2027, 2, 1));
+    expect(mondayStart.whereType<DateTime>(), hasLength(28));
+
+    final sundayStart = visibleMonthGrid(DateTime(2026, 11));
+    expect(sundayStart.take(6).every((date) => date == null), isTrue);
+    expect(sundayStart[6], DateTime(2026, 11, 1));
+
+    final leapFebruary = visibleMonthGrid(DateTime(2028, 2));
+    expect(leapFebruary.whereType<DateTime>(), hasLength(29));
+    expect(leapFebruary.whereType<DateTime>().last, DateTime(2028, 2, 29));
+
+    expect(
+      visibleMonthGrid(DateTime(2026, 12)).whereType<DateTime>().last,
+      DateTime(2026, 12, 31),
+    );
+    expect(
+      visibleMonthGrid(DateTime(2027, 1)).whereType<DateTime>().first,
+      DateTime(2027, 1, 1),
+    );
+  });
+
   test('daily, weekly, fortnightly, monthly, yearly recurrence', () {
     final start = DateTime(2028, 2, 29, 10);
     final cases = [
@@ -93,6 +127,28 @@ void main() {
       DateTime(2027),
     );
     expect(byDate, hasLength(3));
+  });
+
+  test('recurrence expansion before series start returns no items', () {
+    final start = DateTime(2026, 10, 1, 9);
+    final event = CalendarEvent(
+      id: 'future-series',
+      title: 'Mathematik',
+      startAt: start,
+      endAt: start.add(const Duration(hours: 2)),
+      recurrenceRule: recurrence.rule(
+        frequency: Frequency.weekly,
+        until: DateTime(2027, 2, 28, 23, 59),
+      ),
+    );
+
+    final items = recurrence.expand(
+      [event],
+      DateTime(2026, 9),
+      DateTime(2026, 10),
+    );
+
+    expect(items, isEmpty);
   });
 
   test('all-day, overnight, exception and cancellation', () {

@@ -74,8 +74,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       await SupabaseService.client?.auth.signOut();
       if (mounted) {
         setState(
-          () =>
-              _message = 'Abgemeldet. Lokale Daten bleiben auf diesem Geraet.',
+          () => _message = 'Abgemeldet. Lokale Daten bleiben auf diesem Gerät.',
         );
       }
     } catch (error) {

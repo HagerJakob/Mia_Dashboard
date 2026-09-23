@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../shared/design_system/study_card.dart';
+import '../../../shared/design_system/study_radius.dart';
 import '../../../theme/app_colors.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
+import '../../dashboard/domain/dashboard_models.dart';
 import '../domain/calendar_models.dart';
 import '../domain/calendar_services.dart';
 import 'calendar_controller.dart';
@@ -30,18 +33,9 @@ class _MonthView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(calendarControllerProvider.notifier);
-    final first = weekStart(monthStart(state.selectedDate));
-    final last = calendarDay(
-      weekStart(
-        DateTime(state.selectedDate.year, state.selectedDate.month + 1, 0),
-      ),
-      7,
-    );
-    final days = DateTime.utc(
-      last.year,
-      last.month,
-      last.day,
-    ).difference(DateTime.utc(first.year, first.month, first.day)).inDays;
+    final first = monthStart(state.selectedDate);
+    final last = monthEnd(state.selectedDate);
+    final cells = visibleMonthGrid(state.selectedDate);
     final compact = MediaQuery.sizeOf(context).width < 700;
     final occurrences = controller.occurrences(first, last);
     final holidays =
@@ -75,64 +69,24 @@ class _MonthView extends ConsumerWidget {
               ),
           ],
         ),
-        for (var row = 0; row < days ~/ 7; row++)
+        for (var row = 0; row < cells.length ~/ 7; row++)
           SizedBox(
-            height: compact ? 48 : 116,
+            height: compact ? 50 : 112,
             child: Row(
               children: [
                 for (var column = 0; column < 7; column++)
                   Expanded(
-                    child: _MonthDay(
-                      date: calendarDay(first, row * 7 + column),
-                      currentMonth: state.selectedDate.month,
-                      selected: sameDay(
-                        calendarDay(first, row * 7 + column),
-                        state.selectedDate,
-                      ),
-                      occurrences: occurrences
-                          .where(
-                            (o) => overlaps(
-                              o.startAt,
-                              o.endAt,
-                              calendarDay(first, row * 7 + column),
-                              calendarDay(first, row * 7 + column + 1),
-                            ),
-                          )
-                          .toList(),
-                      holiday: holidays
-                          .where(
-                            (h) => sameDay(
-                              h.date,
-                              calendarDay(first, row * 7 + column),
-                            ),
-                          )
-                          .firstOrNull,
-                      periods: periods
-                          .where(
-                            (p) =>
-                                (isAcademicBreak(p.type)
-                                    ? academicVisible
-                                    : phVisible) &&
-                                !p.startDate.isAfter(
-                                  calendarDay(first, row * 7 + column),
-                                ) &&
-                                !p.endDate.isBefore(
-                                  calendarDay(first, row * 7 + column),
-                                ),
-                          )
-                          .toList(),
-                      compact: compact,
-                      onTap: () => controller.selectDate(
-                        calendarDay(first, row * 7 + column),
-                      ),
-                      onDoubleTap: () => showCalendarEditor(
-                        context,
-                        ref,
-                        initialDate: first.add(
-                          Duration(days: row * 7 + column),
-                        ),
-                      ),
-                      onEventTap: (o) => showCalendarDetail(context, ref, o),
+                    child: _monthCell(
+                      context,
+                      ref,
+                      cells[row * 7 + column],
+                      occurrences,
+                      holidays,
+                      periods,
+                      academicVisible,
+                      phVisible,
+                      compact,
+                      controller,
                     ),
                   ),
               ],
@@ -145,14 +99,7 @@ class _MonthView extends ConsumerWidget {
       padding: EdgeInsets.fromLTRB(compact ? 12 : 28, 0, compact ? 12 : 28, 80),
       child: Column(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: grid,
-          ),
+          StudyCard(padding: EdgeInsets.zero, child: grid),
           ...[
             const SizedBox(height: 18),
             _DaySummary(
@@ -180,12 +127,63 @@ class _MonthView extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _monthCell(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime? date,
+    List<CalendarOccurrence> occurrences,
+    List<AustrianHoliday> holidays,
+    List<AcademicPeriod> periods,
+    bool academicVisible,
+    bool phVisible,
+    bool compact,
+    CalendarController controller,
+  ) {
+    if (date == null) return const _EmptyMonthCell();
+    return _MonthDay(
+      date: date,
+      selected: sameDay(date, state.selectedDate),
+      occurrences: occurrences
+          .where((o) => overlaps(o.startAt, o.endAt, date, nextDay(date)))
+          .toList(),
+      holiday: holidays.where((h) => sameDay(h.date, date)).firstOrNull,
+      periods: periods
+          .where(
+            (p) =>
+                (isAcademicBreak(p.type) ? academicVisible : phVisible) &&
+                !p.startDate.isAfter(date) &&
+                !p.endDate.isBefore(date),
+          )
+          .toList(),
+      compact: compact,
+      onTap: () => controller.selectDate(date),
+      onDoubleTap: () => showCalendarEditor(context, ref, initialDate: date),
+      onEventTap: (o) => showCalendarDetail(context, ref, o),
+    );
+  }
+}
+
+class _EmptyMonthCell extends StatelessWidget {
+  const _EmptyMonthCell();
+
+  @override
+  Widget build(BuildContext context) {
+    return const DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: AppColors.border, width: .6),
+          left: BorderSide(color: AppColors.border, width: .6),
+        ),
+      ),
+      child: SizedBox.expand(),
+    );
+  }
 }
 
 class _MonthDay extends StatelessWidget {
   const _MonthDay({
     required this.date,
-    required this.currentMonth,
     required this.selected,
     required this.occurrences,
     required this.periods,
@@ -196,7 +194,6 @@ class _MonthDay extends StatelessWidget {
     this.holiday,
   });
   final DateTime date;
-  final int currentMonth;
   final bool selected, compact;
   final List<CalendarOccurrence> occurrences;
   final AustrianHoliday? holiday;
@@ -207,19 +204,26 @@ class _MonthDay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final today = sameDay(date, DateTime.now());
+    final weekend = date.weekday >= DateTime.saturday;
     return GestureDetector(
       onDoubleTap: onDoubleTap,
       child: InkWell(
         onTap: onTap,
+        borderRadius: StudyRadius.small,
         child: Container(
-          padding: EdgeInsets.all(compact ? 3 : 8),
+          padding: EdgeInsets.all(compact ? 4 : 8),
           decoration: BoxDecoration(
             color: selected
-                ? AppColors.blush.withValues(alpha: .42)
+                ? AppColors.blush.withValues(alpha: .58)
                 : periods.any((p) => isAcademicBreak(p.type))
-                ? const Color(0xFFF2F4F0)
+                ? AppColors.mint.withValues(alpha: .34)
+                : weekend
+                ? AppColors.surface.withValues(alpha: .55)
                 : Colors.transparent,
-            border: Border.all(color: AppColors.border, width: .5),
+            border: const Border(
+              top: BorderSide(color: AppColors.border, width: .6),
+              left: BorderSide(color: AppColors.border, width: .6),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,7 +236,10 @@ class _MonthDay extends StatelessWidget {
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: today ? AppColors.mauve : Colors.transparent,
-                      shape: BoxShape.circle,
+                      borderRadius: StudyRadius.full,
+                      border: selected && !today
+                          ? Border.all(color: AppColors.mauve)
+                          : null,
                     ),
                     child: Text(
                       '${date.day}',
@@ -240,11 +247,7 @@ class _MonthDay extends StatelessWidget {
                         fontWeight: selected || today
                             ? FontWeight.w800
                             : FontWeight.w500,
-                        color: today
-                            ? Colors.white
-                            : date.month == currentMonth
-                            ? AppColors.ink
-                            : AppColors.mutedInk,
+                        color: today ? Colors.white : AppColors.ink,
                       ),
                     ),
                   ),
@@ -287,34 +290,8 @@ class _MonthDay extends StatelessWidget {
                 ))
                   InkWell(
                     onTap: () => onEventTap(occurrence),
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 2),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: occurrence.event.color.withValues(alpha: .18),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 3,
-                            backgroundColor: occurrence.event.color,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              '${occurrence.event.allDay ? '' : '${DateFormat.Hm().format(occurrence.startAt)} '} ${occurrence.event.title}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 10),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    borderRadius: StudyRadius.small,
+                    child: _EventChip(occurrence: occurrence),
                   ),
                 if (occurrences.length >
                     (holiday == null && periods.isEmpty ? 3 : 2))
@@ -334,16 +311,68 @@ class _MonthDay extends StatelessWidget {
   }
 }
 
+class _EventChip extends StatelessWidget {
+  const _EventChip({required this.occurrence});
+
+  final CalendarOccurrence occurrence;
+
+  @override
+  Widget build(BuildContext context) {
+    final event = occurrence.event;
+    return Container(
+      margin: const EdgeInsets.only(top: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: event.color.withValues(alpha: .12),
+        borderRadius: StudyRadius.small,
+        border: Border.all(color: event.color.withValues(alpha: .12)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: event.color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(
+              '${event.allDay ? '' : '${DateFormat.Hm().format(occurrence.startAt)} '} ${event.title}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (event.priority == EventPriority.veryImportant) ...[
+            const SizedBox(width: 3),
+            Icon(Icons.priority_high_rounded, size: 12, color: event.color),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _DaySummary extends ConsumerWidget {
   const _DaySummary({
     required this.date,
     required this.occurrences,
     required this.periods,
+    this.tasks = const [],
+    this.exams = const [],
     this.holiday,
   });
   final DateTime date;
   final List<CalendarOccurrence> occurrences;
   final List<AcademicPeriod> periods;
+  final List<TaskItem> tasks;
+  final List<ExamOverview> exams;
   final AustrianHoliday? holiday;
 
   @override
@@ -429,10 +458,55 @@ class _DaySummary extends ConsumerWidget {
             }
           },
         ),
-      if (occurrences.isEmpty && periods.isEmpty)
+      if (occurrences.isEmpty &&
+          periods.isEmpty &&
+          tasks.isEmpty &&
+          exams.isEmpty)
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 22),
           child: Text('Noch keine Termine an diesem Tag.'),
+        ),
+      for (final exam in exams)
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.school_rounded, color: AppColors.mauve),
+          title: Text(exam.title),
+          subtitle: Text(
+            [
+              if (exam.startAt != null) DateFormat.Hm().format(exam.startAt!),
+              'Prüfung',
+              exam.subject,
+            ].join(' · '),
+          ),
+          onTap: () => ref
+              .read(studyBuddyControllerProvider.notifier)
+              .selectDestination(5),
+        ),
+      for (final task in tasks)
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: IconButton(
+            tooltip: task.done ? 'Wieder öffnen' : 'Erledigen',
+            onPressed: () => ref
+                .read(studyBuddyControllerProvider.notifier)
+                .toggleTask(task.id),
+            icon: Icon(
+              task.done ? Icons.check_circle_rounded : Icons.circle_outlined,
+              color: task.done ? AppColors.sage : AppColors.mauve,
+            ),
+          ),
+          title: Text(task.title),
+          subtitle: Text(
+            [
+              if (task.dueAt != null) DateFormat.Hm().format(task.dueAt!),
+              'Aufgabe',
+              if (task.priority == TaskPriority.high) 'Hoch',
+              if (task.priority == TaskPriority.urgent) 'Dringend',
+            ].join(' · '),
+          ),
+          onTap: () => ref
+              .read(studyBuddyControllerProvider.notifier)
+              .selectDestination(2),
         ),
       for (final occurrence in occurrences)
         ListTile(
@@ -533,12 +607,22 @@ class _TimelineViewState extends ConsumerState<_TimelineView> {
                     onDoubleTap: () =>
                         showCalendarEditor(context, ref, initialDate: day),
                     onTap: () => controller.selectDate(day),
+                    borderRadius: StudyRadius.medium,
                     child: Column(
                       children: [
-                        Text(DateFormat('EEE', 'de_AT').format(day)),
                         Text(
-                          '${day.day}',
-                          style: Theme.of(context).textTheme.titleMedium,
+                          DateFormat('EEE', 'de_AT').format(day),
+                          style: TextStyle(
+                            color: sameDay(day, DateTime.now())
+                                ? AppColors.mauve
+                                : AppColors.mutedInk,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        _TimelineDayNumber(
+                          day: day,
+                          selected: sameDay(day, state.selectedDate),
                         ),
                       ],
                     ),
@@ -631,6 +715,35 @@ class _TimelineViewState extends ConsumerState<_TimelineView> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TimelineDayNumber extends StatelessWidget {
+  const _TimelineDayNumber({required this.day, required this.selected});
+
+  final DateTime day;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final today = sameDay(day, DateTime.now());
+    return Container(
+      width: 32,
+      height: 32,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: today ? AppColors.mauve : Colors.transparent,
+        borderRadius: StudyRadius.full,
+        border: selected && !today ? Border.all(color: AppColors.mauve) : null,
+      ),
+      child: Text(
+        '${day.day}',
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: today ? Colors.white : AppColors.ink,
+          fontWeight: today || selected ? FontWeight.w800 : FontWeight.w700,
+        ),
+      ),
     );
   }
 }
@@ -779,9 +892,30 @@ class _AgendaView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(calendarControllerProvider.notifier);
+    final dashboardState = ref.watch(studyBuddyControllerProvider);
     final start = dayStart(state.selectedDate);
     final end = calendarDay(start, 31);
-    final items = controller.occurrences(start, end);
+    final items = controller
+        .occurrences(start, end)
+        .where((occurrence) => occurrence.event.subjectId == null)
+        .toList();
+    final dueTasks = dashboardState.tasks
+        .where(
+          (task) =>
+              task.dueAt != null &&
+              !task.dueAt!.isBefore(start) &&
+              task.dueAt!.isBefore(end),
+        )
+        .toList();
+    final dueExams = dashboardState.exams
+        .where(
+          (exam) =>
+              exam.startAt != null &&
+              !exam.startAt!.isBefore(start) &&
+              exam.startAt!.isBefore(end) &&
+              exam.effectiveStatus != ExamStatus.cancelled,
+        )
+        .toList();
     final holidays =
         state.visibleSources.contains(CalendarSource.austrianHoliday)
         ? controller.holidays.between(start, end)
@@ -815,7 +949,22 @@ class _AgendaView extends ConsumerWidget {
                         !p.startDate.isAfter(day) && !p.endDate.isBefore(day),
                   )
                   .toList();
-              if (dayItems.isEmpty && holiday == null && dayPeriods.isEmpty) {
+              final dayTasks = dueTasks
+                  .where(
+                    (task) => task.dueAt != null && sameDay(task.dueAt!, day),
+                  )
+                  .toList();
+              final dayExams = dueExams
+                  .where(
+                    (exam) =>
+                        exam.startAt != null && sameDay(exam.startAt!, day),
+                  )
+                  .toList();
+              if (dayItems.isEmpty &&
+                  dayTasks.isEmpty &&
+                  dayExams.isEmpty &&
+                  holiday == null &&
+                  dayPeriods.isEmpty) {
                 return const SizedBox.shrink();
               }
               return Padding(
@@ -825,11 +974,17 @@ class _AgendaView extends ConsumerWidget {
                   occurrences: dayItems,
                   holiday: holiday,
                   periods: dayPeriods,
+                  tasks: dayTasks,
+                  exams: dayExams,
                 ),
               );
             },
           ),
-        if (items.isEmpty && holidays.isEmpty && periods.isEmpty)
+        if (items.isEmpty &&
+            dueTasks.isEmpty &&
+            dueExams.isEmpty &&
+            holidays.isEmpty &&
+            periods.isEmpty)
           const Padding(
             padding: EdgeInsets.all(24),
             child: Text('Keine Einträge in den nächsten 31 Tagen.'),

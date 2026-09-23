@@ -20,6 +20,7 @@ class StudySync {
       'schedule',
       'task',
       'note',
+      'note_folder',
       'subject',
       'exam',
       'reminder',
@@ -81,16 +82,34 @@ class StudySync {
         return [
           for (final r in await database.select(database.tasks).get())
             _row(r.id, r.updatedAt, r.deletedAt, r.needsSync, {
-              'title': r.title,
-              'done': r.done,
+              if (r.taskJson == null) ...{
+                'title': r.title,
+                'done': r.done,
+              } else
+                ...jsonDecode(r.taskJson!) as Map<String, dynamic>,
             }),
         ];
       case 'note':
         return [
           for (final r in await database.select(database.notes).get())
             _row(r.id, r.updatedAt, r.deletedAt, r.needsSync, {
-              'title': r.title,
-              'body': r.body,
+              if (r.noteJson == null) ...{
+                'title': r.title,
+                'body': r.body,
+              } else
+                ...jsonDecode(r.noteJson!) as Map<String, dynamic>,
+            }),
+        ];
+      case 'note_folder':
+        return [
+          for (final r in await database.select(database.noteFolders).get())
+            _row(r.id, r.updatedAt, r.deletedAt, r.needsSync, {
+              'name': r.name,
+              if (r.parentFolderId != null)
+                'parent_folder_id': r.parentFolderId,
+              if (r.subjectId != null) 'subject_id': r.subjectId,
+              'sort_order': r.sortOrder,
+              'color_value': r.colorValue,
             }),
         ];
       case 'subject':
@@ -105,9 +124,12 @@ class StudySync {
         return [
           for (final r in await database.select(database.exams).get())
             _row(r.id, r.updatedAt, r.deletedAt, r.needsSync, {
-              'subject': r.subject,
-              'date_label': r.dateLabel,
-              'progress': r.progress,
+              if (r.examJson == null) ...{
+                'subject': r.subject,
+                'date_label': r.dateLabel,
+                'progress': r.progress,
+              } else
+                ...jsonDecode(r.examJson!) as Map<String, dynamic>,
             }),
         ];
       case 'calendar_category':
@@ -158,6 +180,10 @@ class StudySync {
         await (database.update(database.notes)
               ..where((r) => r.id.equals(id) & r.updatedAt.equals(updated)))
             .write(const NotesCompanion(needsSync: Value(false)));
+      case 'note_folder':
+        await (database.update(database.noteFolders)
+              ..where((r) => r.id.equals(id) & r.updatedAt.equals(updated)))
+            .write(const NoteFoldersCompanion(needsSync: Value(false)));
       case 'subject':
         await (database.update(database.subjects)
               ..where((r) => r.id.equals(id) & r.updatedAt.equals(updated)))
@@ -222,7 +248,8 @@ class StudySync {
               TasksCompanion.insert(
                 id: id,
                 title: payload['title'] as String,
-                done: Value(payload['done'] as bool),
+                done: Value(payload['done'] as bool? ?? false),
+                taskJson: Value(jsonEncode(payload)),
                 createdAt: updated,
                 updatedAt: updated,
                 deletedAt: Value(deleted),
@@ -235,8 +262,26 @@ class StudySync {
             .insertOnConflictUpdate(
               NotesCompanion.insert(
                 id: id,
-                title: payload['title'] as String,
-                body: Value(payload['body'] as String),
+                title: payload['title'] as String? ?? '',
+                body: Value(payload['body'] as String? ?? ''),
+                noteJson: Value(jsonEncode(payload)),
+                createdAt: updated,
+                updatedAt: updated,
+                deletedAt: Value(deleted),
+                needsSync: const Value(false),
+              ),
+            );
+      case 'note_folder':
+        await database
+            .into(database.noteFolders)
+            .insertOnConflictUpdate(
+              NoteFoldersCompanion.insert(
+                id: id,
+                name: payload['name'] as String? ?? '',
+                parentFolderId: Value(payload['parent_folder_id'] as String?),
+                subjectId: Value(payload['subject_id'] as String?),
+                sortOrder: Value(payload['sort_order'] as int? ?? 0),
+                colorValue: Value(payload['color_value'] as int? ?? 0xFFB56D8C),
                 createdAt: updated,
                 updatedAt: updated,
                 deletedAt: Value(deleted),
@@ -258,14 +303,18 @@ class StudySync {
               ),
             );
       case 'exam':
+        final subject =
+            payload['subject'] as String? ?? payload['title'] as String? ?? '';
+        final dateLabel = payload['date_label'] as String? ?? '';
         await database
             .into(database.exams)
             .insertOnConflictUpdate(
               ExamsCompanion.insert(
                 id: id,
-                subject: payload['subject'] as String,
-                dateLabel: payload['date_label'] as String,
-                progress: Value((payload['progress'] as num).toDouble()),
+                subject: subject,
+                dateLabel: dateLabel,
+                progress: Value((payload['progress'] as num?)?.toDouble() ?? 0),
+                examJson: Value(jsonEncode(payload)),
                 createdAt: updated,
                 updatedAt: updated,
                 deletedAt: Value(deleted),

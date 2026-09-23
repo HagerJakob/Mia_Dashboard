@@ -18,6 +18,20 @@ DateTime weekStart(DateTime value) =>
     DateTime(value.year, value.month, value.day - value.weekday + 1);
 DateTime monthStart(DateTime value) => DateTime(value.year, value.month);
 DateTime monthEnd(DateTime value) => DateTime(value.year, value.month + 1);
+List<DateTime?> visibleMonthGrid(DateTime value) {
+  final first = monthStart(value);
+  final lastDay = DateTime(value.year, value.month + 1, 0).day;
+  final leadingEmpty = first.weekday - 1;
+  final totalCells = ((leadingEmpty + lastDay + 6) ~/ 7) * 7;
+  return [
+    for (var index = 0; index < totalCells; index++)
+      if (index < leadingEmpty || index >= leadingEmpty + lastDay)
+        null
+      else
+        DateTime(value.year, value.month, index - leadingEmpty + 1),
+  ];
+}
+
 bool sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 bool overlaps(DateTime start, DateTime end, DateTime from, DateTime to) =>
@@ -65,6 +79,7 @@ class RecurrenceService {
       final start = _wallUtc(event.startAt);
       final after = _wallUtc(from.subtract(duration));
       final before = _wallUtc(to);
+      if (before.isBefore(start)) continue;
       for (final instance in rule.getInstances(
         start: start,
         after: after.isBefore(start) ? start : after,
@@ -135,7 +150,7 @@ class RecurrenceService {
   }) {
     if (interval <= 0 || (count != null && count <= 0)) {
       throw ArgumentError(
-        'Wiederholungsintervall und Anzahl muessen positiv sein.',
+        'Wiederholungsintervall und Anzahl müssen positiv sein.',
       );
     }
     return RecurrenceRule(

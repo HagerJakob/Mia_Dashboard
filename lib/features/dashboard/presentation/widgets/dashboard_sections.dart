@@ -112,7 +112,7 @@ class TasksCard extends StatelessWidget {
         icon: Icons.checklist_rounded,
         actionLabel: 'Aufgabe',
         onAction: onAdd,
-        emptyText: 'Noch keine Aufgaben fuer das Studium.',
+        emptyText: 'Noch keine Aufgaben für das Studium.',
         children: [
           for (final task in tasks)
             CheckboxListTile(
@@ -152,14 +152,14 @@ class ExamCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(
-            title: 'Naechste Pruefung',
+            title: 'Nächste Prüfung',
             icon: Icons.school_rounded,
-            actionLabel: 'Pruefung',
+            actionLabel: 'Prüfung',
             onAction: onAdd,
           ),
           const SizedBox(height: 16),
           if (exam == null)
-            const _EmptyText('Noch keine Pruefung eingetragen.')
+            const _EmptyText('Noch keine Prüfung eingetragen.')
           else ...[
             Text(exam.subject, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 4),

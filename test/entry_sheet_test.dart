@@ -12,7 +12,7 @@ void main() {
         'Termin': showScheduleSheet,
         'Notiz': showNoteSheet,
         'Fach': showSubjectSheet,
-        'Pruefung': showExamSheet,
+        'Prüfung': showExamSheet,
         'Erinnerung': showReminderSheet,
       };
 
@@ -56,7 +56,7 @@ void main() {
 
       await tester.tap(find.text('Oeffnen'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Schliessen'));
+      await tester.tap(find.byTooltip('Schließen'));
       await tester.pumpAndSettle();
       expect(find.byType(TextField), findsNothing);
       expect(tester.takeException(), isNull);
