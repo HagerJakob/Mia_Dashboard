@@ -12,6 +12,7 @@ class StudyBuddyState {
     this.subjects = const [],
     this.exams = const [],
     this.reminders = const [],
+    this.studySessions = const [],
     this.focusSeconds = 25 * 60,
     this.timerRunning = false,
   });
@@ -24,6 +25,7 @@ class StudyBuddyState {
   final List<SubjectItem> subjects;
   final List<ExamOverview> exams;
   final List<ReminderItem> reminders;
+  final List<StudySession> studySessions;
   final int focusSeconds;
   final bool timerRunning;
 
@@ -36,6 +38,7 @@ class StudyBuddyState {
     List<SubjectItem>? subjects,
     List<ExamOverview>? exams,
     List<ReminderItem>? reminders,
+    List<StudySession>? studySessions,
     int? focusSeconds,
     bool? timerRunning,
   }) {
@@ -48,6 +51,7 @@ class StudyBuddyState {
       subjects: subjects ?? this.subjects,
       exams: exams ?? this.exams,
       reminders: reminders ?? this.reminders,
+      studySessions: studySessions ?? this.studySessions,
       focusSeconds: focusSeconds ?? this.focusSeconds,
       timerRunning: timerRunning ?? this.timerRunning,
     );
@@ -73,6 +77,161 @@ class TimedItem {
 enum TaskStatus { open, inProgress, completed, paused }
 
 enum TaskPriority { none, low, normal, high, urgent }
+
+enum TimerMode { focus, pomodoro, countdown, stopwatch }
+
+enum StudySessionStatus { active, paused, completed, discarded }
+
+class StudySession {
+  const StudySession({
+    required this.id,
+    required this.mode,
+    required this.status,
+    required this.startedAt,
+    this.subjectId,
+    this.examId,
+    this.taskId,
+    this.endedAt,
+    this.focusDurationSeconds = 0,
+    this.pauseDurationSeconds = 0,
+    this.plannedDurationSeconds,
+    this.pomodoroFocusMinutes,
+    this.pomodoroBreakMinutes,
+    this.pomodoroCyclesCompleted = 0,
+    this.note = '',
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  final String id;
+  final String? subjectId;
+  final String? examId;
+  final String? taskId;
+  final TimerMode mode;
+  final StudySessionStatus status;
+  final DateTime startedAt;
+  final DateTime? endedAt;
+  final int focusDurationSeconds;
+  final int pauseDurationSeconds;
+  final int? plannedDurationSeconds;
+  final int? pomodoroFocusMinutes;
+  final int? pomodoroBreakMinutes;
+  final int pomodoroCyclesCompleted;
+  final String note;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  bool get isActive =>
+      status == StudySessionStatus.active ||
+      status == StudySessionStatus.paused;
+
+  StudySession copyWith({
+    Object? subjectId = _unset,
+    Object? examId = _unset,
+    Object? taskId = _unset,
+    TimerMode? mode,
+    StudySessionStatus? status,
+    DateTime? startedAt,
+    Object? endedAt = _unset,
+    int? focusDurationSeconds,
+    int? pauseDurationSeconds,
+    Object? plannedDurationSeconds = _unset,
+    Object? pomodoroFocusMinutes = _unset,
+    Object? pomodoroBreakMinutes = _unset,
+    int? pomodoroCyclesCompleted,
+    String? note,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => StudySession(
+    id: id,
+    subjectId: subjectId == _unset ? this.subjectId : subjectId as String?,
+    examId: examId == _unset ? this.examId : examId as String?,
+    taskId: taskId == _unset ? this.taskId : taskId as String?,
+    mode: mode ?? this.mode,
+    status: status ?? this.status,
+    startedAt: startedAt ?? this.startedAt,
+    endedAt: endedAt == _unset ? this.endedAt : endedAt as DateTime?,
+    focusDurationSeconds: focusDurationSeconds ?? this.focusDurationSeconds,
+    pauseDurationSeconds: pauseDurationSeconds ?? this.pauseDurationSeconds,
+    plannedDurationSeconds: plannedDurationSeconds == _unset
+        ? this.plannedDurationSeconds
+        : plannedDurationSeconds as int?,
+    pomodoroFocusMinutes: pomodoroFocusMinutes == _unset
+        ? this.pomodoroFocusMinutes
+        : pomodoroFocusMinutes as int?,
+    pomodoroBreakMinutes: pomodoroBreakMinutes == _unset
+        ? this.pomodoroBreakMinutes
+        : pomodoroBreakMinutes as int?,
+    pomodoroCyclesCompleted:
+        pomodoroCyclesCompleted ?? this.pomodoroCyclesCompleted,
+    note: note ?? this.note,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+
+  Map<String, Object?> toJson() => {
+    if (subjectId != null) 'subject_id': subjectId,
+    if (examId != null) 'exam_id': examId,
+    if (taskId != null) 'task_id': taskId,
+    'mode': mode.name,
+    'status': status.name,
+    'started_at': startedAt.toIso8601String(),
+    if (endedAt != null) 'ended_at': endedAt!.toIso8601String(),
+    'focus_duration_seconds': focusDurationSeconds,
+    'pause_duration_seconds': pauseDurationSeconds,
+    if (plannedDurationSeconds != null)
+      'planned_duration_seconds': plannedDurationSeconds,
+    if (pomodoroFocusMinutes != null)
+      'pomodoro_focus_minutes': pomodoroFocusMinutes,
+    if (pomodoroBreakMinutes != null)
+      'pomodoro_break_minutes': pomodoroBreakMinutes,
+    'pomodoro_cycles_completed': pomodoroCyclesCompleted,
+    'note': note,
+  };
+
+  String encode() => jsonEncode(toJson());
+
+  factory StudySession.fromJson(
+    String id,
+    Map<String, dynamic> data, {
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => StudySession(
+    id: id,
+    subjectId: data['subject_id'] as String?,
+    examId: data['exam_id'] as String?,
+    taskId: data['task_id'] as String?,
+    mode: _enumByName(TimerMode.values, data['mode'], TimerMode.focus),
+    status: _enumByName(
+      StudySessionStatus.values,
+      data['status'],
+      StudySessionStatus.completed,
+    ),
+    startedAt: _date(data['started_at']) ?? DateTime.now(),
+    endedAt: _date(data['ended_at']),
+    focusDurationSeconds: data['focus_duration_seconds'] as int? ?? 0,
+    pauseDurationSeconds: data['pause_duration_seconds'] as int? ?? 0,
+    plannedDurationSeconds: data['planned_duration_seconds'] as int?,
+    pomodoroFocusMinutes: data['pomodoro_focus_minutes'] as int?,
+    pomodoroBreakMinutes: data['pomodoro_break_minutes'] as int?,
+    pomodoroCyclesCompleted: data['pomodoro_cycles_completed'] as int? ?? 0,
+    note: data['note'] as String? ?? '',
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+  );
+
+  factory StudySession.decode(
+    String id,
+    String json, {
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => StudySession.fromJson(
+    id,
+    jsonDecode(json) as Map<String, dynamic>,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+  );
+}
 
 enum ExamStatus {
   planned,

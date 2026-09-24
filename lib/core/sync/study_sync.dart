@@ -25,6 +25,7 @@ class StudySync {
       'exam',
       'reminder',
       'calendar_category',
+      'study_session',
     ]) {
       final local = await _localRows(kind);
       for (final row in local.where((row) => row['needs_sync'] == true)) {
@@ -141,6 +142,13 @@ class StudySync {
               'color_value': r.colorValue,
             }),
         ];
+      case 'study_session':
+        return [
+          for (final r in await database.select(database.studySessions).get())
+            _row(r.id, r.updatedAt, r.deletedAt, r.needsSync, {
+              ...jsonDecode(r.sessionJson) as Map<String, dynamic>,
+            }),
+        ];
       default:
         return [
           for (final r in await database.select(database.reminders).get())
@@ -200,6 +208,10 @@ class StudySync {
         await (database.update(database.calendarCategories)
               ..where((r) => r.id.equals(id) & r.updatedAt.equals(updated)))
             .write(const CalendarCategoriesCompanion(needsSync: Value(false)));
+      case 'study_session':
+        await (database.update(database.studySessions)
+              ..where((r) => r.id.equals(id) & r.updatedAt.equals(updated)))
+            .write(const StudySessionsCompanion(needsSync: Value(false)));
     }
   }
 
@@ -343,6 +355,25 @@ class StudySync {
                 id: id,
                 name: payload['name'] as String,
                 colorValue: payload['color_value'] as int,
+                createdAt: updated,
+                updatedAt: updated,
+                deletedAt: Value(deleted),
+                needsSync: const Value(false),
+              ),
+            );
+      case 'study_session':
+        await database
+            .into(database.studySessions)
+            .insertOnConflictUpdate(
+              StudySessionsCompanion.insert(
+                id: id,
+                sessionJson: jsonEncode(payload),
+                startedAt: DateTime.parse(payload['started_at'] as String),
+                endedAt: Value(
+                  payload['ended_at'] == null
+                      ? null
+                      : DateTime.parse(payload['ended_at'] as String),
+                ),
                 createdAt: updated,
                 updatedAt: updated,
                 deletedAt: Value(deleted),

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rrule/rrule.dart';
 
@@ -249,21 +247,18 @@ class CalendarController extends Notifier<CalendarState> {
       }
     }
     await refresh();
-    unawaited(repo.syncNow().catchError((Object _) {}));
   }
 
   Future<void> addCategory(CalendarCategory category) async {
     final repo = ref.read(studyBuddyRepositoryProvider);
     await repo.saveCalendarCategory(category);
     await refresh();
-    unawaited(repo.syncNow().catchError((Object _) {}));
   }
 
   Future<void> _persist(CalendarEvent event) async {
     final repo = ref.read(studyBuddyRepositoryProvider);
     await repo.saveCalendarEvent(event);
     await refresh();
-    unawaited(repo.syncNow().catchError((Object _) {}));
   }
 
   Future<void> _truncate(CalendarEvent master, DateTime pivot) async {

@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/responsive_layout.dart';
+import '../../../shared/design_system/study_assets.dart';
+import '../../../shared/design_system/study_svg_asset.dart';
 import '../../../shared/models/navigation_item.dart';
 import '../../../theme/app_colors.dart';
 import '../../auth/presentation/account_screen.dart';
 import '../../calendar/presentation/calendar_screen.dart';
 import '../../exams/presentation/exams_screen.dart';
 import '../../notes/presentation/notes_screen.dart';
+import '../../statistics/presentation/statistics_screen.dart';
 import '../../subjects/presentation/subjects_screen.dart';
 import '../../tasks/presentation/tasks_screen.dart';
+import '../../timer/presentation/timer_screen.dart';
 import '../domain/dashboard_models.dart';
 import 'dashboard_controller.dart';
 import 'widgets/add_entry_sheet.dart';
@@ -40,21 +44,45 @@ class DashboardScreen extends ConsumerWidget {
         .push(MaterialPageRoute<void>(builder: (_) => const AccountScreen()));
 
     if (context.isCompact) {
-      const mobileIndexes = [0, 1, 2, 3, 4];
+      const mobileIndexes = [0, 1, 2, 6, -1];
       final mobileItems = [
-        _items[0],
+        const StudyNavigationItem(label: 'Home', icon: Icons.grid_view_rounded),
         _items[1],
         _items[2],
-        _items[3],
-        _items[4],
+        const StudyNavigationItem(label: 'Lernen', icon: Icons.timer_rounded),
+        const StudyNavigationItem(
+          label: 'Mehr',
+          icon: Icons.more_horiz_rounded,
+        ),
       ];
       final mobileIndex = mobileIndexes.contains(selectedIndex)
           ? mobileIndexes.indexOf(selectedIndex)
-          : 0;
+          : 4;
+      final secondaryDestination =
+          selectedIndex != -1 && !mobileIndexes.contains(selectedIndex);
 
       return Scaffold(
         appBar: AppBar(
-          title: const Text('StudyBuddy'),
+          leading: secondaryDestination
+              ? IconButton(
+                  tooltip: 'Zurück zu Mehr',
+                  onPressed: () => controller.selectDestination(-1),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                )
+              : null,
+          title: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              StudySvgAsset(
+                asset: StudyAssets.appIcon,
+                width: 30,
+                height: 30,
+                semanticLabel: 'StudyBuddy Logo',
+              ),
+              SizedBox(width: 10),
+              Text('StudyBuddy'),
+            ],
+          ),
           actions: [
             IconButton(
               tooltip: 'Konto',
@@ -64,9 +92,13 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
         body: SafeArea(
-          child: _SelectedDestination(
-            state: state.copyWith(selectedIndex: mobileIndex),
-          ),
+          child: selectedIndex == -1
+              ? _MoreDestination(
+                  selectedIndex: selectedIndex,
+                  onSelected: controller.selectDestination,
+                  onSettings: openAccount,
+                )
+              : _SelectedDestination(state: state),
         ),
         bottomNavigationBar: StudyBottomNavigation(
           items: mobileItems,
@@ -90,7 +122,7 @@ class DashboardScreen extends ConsumerWidget {
                     onSettings: openAccount,
                   )
                 : StudyNavigationRail(
-                    items: _items.take(6).toList(),
+                    items: _items,
                     selectedIndex: selectedIndex,
                     onSelected: controller.selectDestination,
                     onSettings: openAccount,
@@ -119,7 +151,8 @@ class _SelectedDestination extends ConsumerWidget {
       3 => const NotesScreen(),
       4 => const SubjectsScreen(),
       5 => const ExamsScreen(),
-      6 => DashboardContent(state: state, focusOnly: true),
+      6 => const TimerScreen(),
+      7 => const StatisticsScreen(),
       _ => EmptyFeatureScreen(
         title: 'Statistiken',
         message: 'Statistiken erscheinen, sobald Lernzeiten vorhanden sind.',
@@ -137,5 +170,70 @@ class _SelectedDestination extends ConsumerWidget {
         onAction: () => showReminderSheet(context, controller),
       ),
     };
+  }
+}
+
+class _MoreDestination extends StatelessWidget {
+  const _MoreDestination({
+    required this.selectedIndex,
+    required this.onSelected,
+    required this.onSettings,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+  final VoidCallback onSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = [
+      (
+        'Studium',
+        [
+          (3, 'Notizen', Icons.edit_note_rounded),
+          (4, 'Fächer', Icons.auto_stories_rounded),
+          (5, 'Prüfungen', Icons.school_rounded),
+        ],
+      ),
+      ('Auswertung', [(7, 'Statistiken', Icons.bar_chart_rounded)]),
+    ];
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 96),
+      children: [
+        Text('Mehr', style: Theme.of(context).textTheme.headlineMedium),
+        const SizedBox(height: 6),
+        Text(
+          'Alle StudyBuddy-Bereiche bleiben auch am Smartphone erreichbar.',
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: AppColors.mutedInk),
+        ),
+        const SizedBox(height: 20),
+        for (final group in groups) ...[
+          Text(group.$1, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 10),
+          for (final item in group.$2)
+            Card(
+              child: ListTile(
+                selected: selectedIndex == item.$1,
+                leading: Icon(item.$3, color: AppColors.mauve),
+                title: Text(item.$2),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => onSelected(item.$1),
+              ),
+            ),
+          const SizedBox(height: 18),
+        ],
+        Text('App', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 10),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.settings_rounded, color: AppColors.mauve),
+            title: const Text('Einstellungen'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: onSettings,
+          ),
+        ),
+      ],
+    );
   }
 }

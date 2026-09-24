@@ -51,7 +51,6 @@ class StudyBuddyController extends Notifier<StudyBuddyState> {
   Future<void> _save(Future<void> operation) async {
     try {
       await operation;
-      await syncNow();
     } catch (_) {
       // The local write remains queued for the next successful sync.
     }
@@ -278,6 +277,31 @@ class StudyBuddyController extends Notifier<StudyBuddyState> {
       ],
     );
     await _save(ref.read(studyBuddyRepositoryProvider).deleteExam(id));
+  }
+
+  Future<void> saveStudySession(StudySession session) async {
+    final exists = state.studySessions.any((item) => item.id == session.id);
+    state = state.copyWith(
+      studySessions: [
+        for (final item in state.studySessions)
+          if (item.id == session.id) session else item,
+        if (!exists) session,
+      ],
+    );
+    final repo = ref.read(studyBuddyRepositoryProvider);
+    await _save(
+      exists ? repo.updateStudySession(session) : repo.addStudySession(session),
+    );
+  }
+
+  Future<void> deleteStudySession(String id) async {
+    state = state.copyWith(
+      studySessions: [
+        for (final item in state.studySessions)
+          if (item.id != id) item,
+      ],
+    );
+    await _save(ref.read(studyBuddyRepositoryProvider).deleteStudySession(id));
   }
 
   void addReminder(String title, String dateLabel) {

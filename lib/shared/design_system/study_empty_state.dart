@@ -21,9 +21,7 @@ class StudyEmptyState extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
+              style: Theme.of(context).textTheme.bodyMedium
                   ?.copyWith(color: StudyColors.mutedInk),
             ),
           ),

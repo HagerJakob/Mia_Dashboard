@@ -7,9 +7,9 @@ void main() {
   testWidgets('renders the StudyBuddy dashboard', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: StudyBuddyApp()));
 
-    expect(find.textContaining('Hallo Mia'), findsOneWidget);
-    expect(find.text('Lernstreak'), findsOneWidget);
-    expect(find.text('Meine Aufgaben'), findsOneWidget);
-    expect(find.text('Focus Timer'), findsOneWidget);
+    expect(find.textContaining('Mia'), findsOneWidget);
+    expect(find.text('Heute'), findsWidgets);
+    expect(find.text('Aufgaben'), findsWidgets);
+    expect(find.text('Focus'), findsOneWidget);
   });
 }

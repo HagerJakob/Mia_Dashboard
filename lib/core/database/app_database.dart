@@ -118,6 +118,20 @@ class CalendarCategories extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+class StudySessions extends Table {
+  TextColumn get id => text()();
+  TextColumn get sessionJson => text()();
+  DateTimeColumn get startedAt => dateTime()();
+  DateTimeColumn get endedAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+  BoolColumn get needsSync => boolean().withDefault(const Constant(true))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     ScheduleEntries,
@@ -128,6 +142,7 @@ class CalendarCategories extends Table {
     Exams,
     Reminders,
     CalendarCategories,
+    StudySessions,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -135,7 +150,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.withExecutor(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -163,6 +178,9 @@ class AppDatabase extends _$AppDatabase {
         await _addColumnIfMissing('notes', 'note_json', () {
           return m.addColumn(notes, notes.noteJson);
         });
+      }
+      if (from < 6) {
+        await _createStudySessionsIfMissing();
       }
     },
   );
@@ -230,6 +248,21 @@ class AppDatabase extends _$AppDatabase {
     ''');
   }
 
+  Future<void> _createStudySessionsIfMissing() {
+    return customStatement('''
+      CREATE TABLE IF NOT EXISTS study_sessions (
+        id TEXT NOT NULL PRIMARY KEY,
+        session_json TEXT NOT NULL,
+        started_at INTEGER NOT NULL,
+        ended_at INTEGER NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        deleted_at INTEGER NULL,
+        needs_sync INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
+  }
+
   Future<void> _addColumnIfMissing(
     String table,
     String column,
@@ -289,6 +322,13 @@ class AppDatabase extends _$AppDatabase {
     return (select(reminders)
           ..where((reminder) => reminder.deletedAt.isNull())
           ..orderBy([(reminder) => OrderingTerm.asc(reminder.createdAt)]))
+        .get();
+  }
+
+  Future<List<StudySession>> activeStudySessions() {
+    return (select(studySessions)
+          ..where((session) => session.deletedAt.isNull())
+          ..orderBy([(session) => OrderingTerm.desc(session.startedAt)]))
         .get();
   }
 }

@@ -375,6 +375,7 @@ class _NotesListPane extends StatelessWidget {
         onNewNote: onNewNote,
         onOpen: onOpen,
         onChanged: onChanged,
+        embedded: true,
       ),
     ],
   );
@@ -544,6 +545,7 @@ class _NoteListOnly extends StatelessWidget {
     required this.onOpen,
     required this.onChanged,
     this.selectedNoteId,
+    this.embedded = false,
   });
 
   final StudyBuddyState state;
@@ -553,6 +555,7 @@ class _NoteListOnly extends StatelessWidget {
   final ValueChanged<NoteItem> onOpen;
   final VoidCallback onChanged;
   final String? selectedNoteId;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
@@ -560,7 +563,14 @@ class _NoteListOnly extends StatelessWidget {
       border: Border(right: BorderSide(color: AppColors.border)),
     ),
     child: ListView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+      shrinkWrap: embedded,
+      physics: embedded ? const NeverScrollableScrollPhysics() : null,
+      padding: EdgeInsets.fromLTRB(
+        embedded ? 0 : 16,
+        embedded ? 0 : 18,
+        embedded ? 0 : 16,
+        18,
+      ),
       children: [
         Row(
           children: [

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/models/navigation_item.dart';
+import '../../../../shared/design_system/study_assets.dart';
 import '../../../../shared/design_system/study_radius.dart';
+import '../../../../shared/design_system/study_svg_asset.dart';
 import '../../../../theme/app_colors.dart';
 
 class StudySidebar extends StatelessWidget {
@@ -84,12 +86,10 @@ class StudyNavigationRail extends StatelessWidget {
       selectedIndex: selectedIndex.clamp(0, items.length - 1),
       onDestinationSelected: onSelected,
       labelType: NavigationRailLabelType.all,
+      scrollable: true,
       leading: const Padding(
         padding: EdgeInsets.only(top: 12, bottom: 18),
-        child: CircleAvatar(
-          backgroundColor: AppColors.blush,
-          child: Icon(Icons.favorite_rounded, color: AppColors.mauve),
-        ),
+        child: _LogoMark(size: 46),
       ),
       trailing: IconButton(
         tooltip: 'Konto & Synchronisierung',
@@ -147,7 +147,14 @@ class _Logo extends StatelessWidget {
             color: AppColors.blush,
             borderRadius: StudyRadius.medium,
           ),
-          child: const Icon(Icons.favorite_rounded, color: AppColors.mauve),
+          clipBehavior: Clip.antiAlias,
+          child: const Padding(
+            padding: EdgeInsets.all(5),
+            child: StudySvgAsset(
+              asset: StudyAssets.appIcon,
+              semanticLabel: 'StudyBuddy Logo',
+            ),
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -161,6 +168,32 @@ class _Logo extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _LogoMark extends StatelessWidget {
+  const _LogoMark({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: size,
+      width: size,
+      decoration: BoxDecoration(
+        color: AppColors.blush,
+        borderRadius: StudyRadius.medium,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: const Padding(
+        padding: EdgeInsets.all(5),
+        child: StudySvgAsset(
+          asset: StudyAssets.appIcon,
+          semanticLabel: 'StudyBuddy Logo',
+        ),
+      ),
     );
   }
 }

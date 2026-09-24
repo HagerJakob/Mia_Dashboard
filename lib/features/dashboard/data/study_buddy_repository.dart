@@ -3,8 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/database/app_database.dart'
-    hide CalendarCategory, NoteFolder;
+    hide CalendarCategory, NoteFolder, StudySession;
 import '../../../core/supabase/supabase_service.dart';
+import '../../../core/sync/sync_coordinator.dart';
 import '../../../core/sync/study_sync.dart';
 import '../../calendar/domain/calendar_models.dart';
 import '../domain/dashboard_models.dart';
@@ -28,6 +29,9 @@ abstract interface class StudyBuddyRepository {
   Future<void> updateExam(ExamOverview exam);
   Future<void> deleteExam(String id);
   Future<void> addReminder(ReminderItem reminder);
+  Future<void> addStudySession(StudySession session);
+  Future<void> updateStudySession(StudySession session);
+  Future<void> deleteStudySession(String id);
   Future<List<CalendarEvent>> calendarEvents();
   Future<List<CalendarCategory>> calendarCategories();
   Future<void> saveCalendarEvent(CalendarEvent event);
@@ -207,6 +211,31 @@ class InMemoryStudyBuddyRepository implements StudyBuddyRepository {
   }
 
   @override
+  Future<void> addStudySession(StudySession session) async {
+    _state = _state.copyWith(studySessions: [..._state.studySessions, session]);
+  }
+
+  @override
+  Future<void> updateStudySession(StudySession session) async {
+    _state = _state.copyWith(
+      studySessions: [
+        for (final item in _state.studySessions)
+          if (item.id == session.id) session else item,
+      ],
+    );
+  }
+
+  @override
+  Future<void> deleteStudySession(String id) async {
+    _state = _state.copyWith(
+      studySessions: [
+        for (final item in _state.studySessions)
+          if (item.id != id) item,
+      ],
+    );
+  }
+
+  @override
   Future<void> dispose() async {}
 
   @override
@@ -217,6 +246,10 @@ class DriftStudyBuddyRepository implements StudyBuddyRepository {
   DriftStudyBuddyRepository(this._database);
 
   final AppDatabase _database;
+  late final SyncCoordinator _syncCoordinator = SyncCoordinator(
+    runner: _runSync,
+    debugLabel: 'StudyBuddy Sync',
+  );
 
   @override
   Future<List<CalendarEvent>> calendarEvents() async => [
@@ -253,6 +286,7 @@ class DriftStudyBuddyRepository implements StudyBuddyRepository {
             needsSync: const Value(true),
           ),
         );
+    _syncCoordinator.requestSync(reason: 'calendar event saved');
   }
 
   @override
@@ -266,6 +300,7 @@ class DriftStudyBuddyRepository implements StudyBuddyRepository {
         needsSync: const Value(true),
       ),
     );
+    _syncCoordinator.requestSync(reason: 'calendar event deleted');
   }
 
   @override
@@ -286,20 +321,28 @@ class DriftStudyBuddyRepository implements StudyBuddyRepository {
             needsSync: const Value(true),
           ),
         );
+    _syncCoordinator.requestSync(reason: 'calendar category saved');
   }
 
-  Future<void> _syncQueue = Future.value();
-
   @override
-  Future<void> syncNow() {
+  Future<void> syncNow() => _syncCoordinator.flush();
+
+  Future<void> _runSync() async {
     final client = SupabaseService.client;
     if (client == null || client.auth.currentUser == null) {
-      return Future.value();
+      return;
     }
-    _syncQueue = _syncQueue
-        .catchError((Object _) {})
-        .then((_) => StudySync(_database, client).run());
-    return _syncQueue;
+    await StudySync(_database, client).run();
+  }
+
+  Future<T> _afterMutation<T>(
+    Future<T> operation, {
+    required String reason,
+    bool debounced = false,
+  }) async {
+    final result = await operation;
+    _syncCoordinator.requestSync(reason: reason, debounced: debounced);
+    return result;
   }
 
   @override
@@ -311,6 +354,7 @@ class DriftStudyBuddyRepository implements StudyBuddyRepository {
     final subjects = await _database.activeSubjects();
     final exams = await _database.activeExams();
     final reminders = await _database.activeReminders();
+    final studySessions = await _database.activeStudySessions();
 
     return StudyBuddyState(
       schedule: [
@@ -398,272 +442,388 @@ class DriftStudyBuddyRepository implements StudyBuddyRepository {
             dateLabel: reminder.dateLabel,
           ),
       ],
+      studySessions: [
+        for (final session in studySessions)
+          StudySession.decode(
+            session.id,
+            session.sessionJson,
+            createdAt: session.createdAt,
+            updatedAt: session.updatedAt,
+          ),
+      ],
     );
   }
 
   @override
   Future<void> addScheduleItem(TimedItem item) {
     final now = DateTime.now();
-    return _database
-        .into(_database.scheduleEntries)
-        .insert(
-          ScheduleEntriesCompanion.insert(
-            id: item.id,
-            time: item.time,
-            title: item.title,
-            createdAt: now,
-            updatedAt: now,
+    return _afterMutation(
+      _database
+          .into(_database.scheduleEntries)
+          .insert(
+            ScheduleEntriesCompanion.insert(
+              id: item.id,
+              time: item.time,
+              title: item.title,
+              createdAt: now,
+              updatedAt: now,
+            ),
           ),
-        );
+      reason: 'schedule item added',
+    );
   }
 
   @override
   Future<void> addTask(TaskItem item) {
     final now = DateTime.now();
-    return _database
-        .into(_database.tasks)
-        .insertOnConflictUpdate(
-          TasksCompanion.insert(
-            id: item.id,
-            title: item.title,
-            done: Value(item.done),
-            taskJson: Value(item.encode()),
-            createdAt: item.createdAt ?? now,
-            updatedAt: item.updatedAt ?? now,
+    return _afterMutation(
+      _database
+          .into(_database.tasks)
+          .insertOnConflictUpdate(
+            TasksCompanion.insert(
+              id: item.id,
+              title: item.title,
+              done: Value(item.done),
+              taskJson: Value(item.encode()),
+              createdAt: item.createdAt ?? now,
+              updatedAt: item.updatedAt ?? now,
+            ),
           ),
-        );
+      reason: 'task saved',
+    );
   }
 
   @override
   Future<void> updateTask(TaskItem item) {
-    return (_database.update(
-      _database.tasks,
-    )..where((task) => task.id.equals(item.id))).write(
-      TasksCompanion(
-        done: Value(item.done),
-        title: Value(item.title),
-        taskJson: Value(item.encode()),
-        updatedAt: Value(DateTime.now()),
-        needsSync: const Value(true),
+    return _afterMutation(
+      (_database.update(
+        _database.tasks,
+      )..where((task) => task.id.equals(item.id))).write(
+        TasksCompanion(
+          done: Value(item.done),
+          title: Value(item.title),
+          taskJson: Value(item.encode()),
+          updatedAt: Value(DateTime.now()),
+          needsSync: const Value(true),
+        ),
       ),
+      reason: 'task updated',
     );
   }
 
   @override
   Future<void> deleteTask(String id) {
-    return (_database.update(
-      _database.tasks,
-    )..where((task) => task.id.equals(id))).write(
-      TasksCompanion(
-        deletedAt: Value(DateTime.now()),
-        updatedAt: Value(DateTime.now()),
-        needsSync: const Value(true),
+    return _afterMutation(
+      (_database.update(
+        _database.tasks,
+      )..where((task) => task.id.equals(id))).write(
+        TasksCompanion(
+          deletedAt: Value(DateTime.now()),
+          updatedAt: Value(DateTime.now()),
+          needsSync: const Value(true),
+        ),
       ),
+      reason: 'task deleted',
     );
   }
 
   @override
   Future<void> addNote(NoteItem item) {
     final now = DateTime.now();
-    return _database
-        .into(_database.notes)
-        .insertOnConflictUpdate(
-          NotesCompanion.insert(
-            id: item.id,
-            title: item.title,
-            body: Value(item.body),
-            noteJson: Value(item.encode()),
-            createdAt: item.createdAt ?? now,
-            updatedAt: item.updatedAt ?? now,
+    return _afterMutation(
+      _database
+          .into(_database.notes)
+          .insertOnConflictUpdate(
+            NotesCompanion.insert(
+              id: item.id,
+              title: item.title,
+              body: Value(item.body),
+              noteJson: Value(item.encode()),
+              createdAt: item.createdAt ?? now,
+              updatedAt: item.updatedAt ?? now,
+            ),
           ),
-        );
+      reason: 'note saved',
+    );
   }
 
   @override
   Future<void> updateNote(NoteItem item) {
-    return (_database.update(
-      _database.notes,
-    )..where((note) => note.id.equals(item.id))).write(
-      NotesCompanion(
-        title: Value(item.title),
-        body: Value(item.body),
-        noteJson: Value(item.encode()),
-        updatedAt: Value(DateTime.now()),
-        needsSync: const Value(true),
+    return _afterMutation(
+      (_database.update(
+        _database.notes,
+      )..where((note) => note.id.equals(item.id))).write(
+        NotesCompanion(
+          title: Value(item.title),
+          body: Value(item.body),
+          noteJson: Value(item.encode()),
+          updatedAt: Value(DateTime.now()),
+          needsSync: const Value(true),
+        ),
       ),
+      reason: 'note updated',
+      debounced: true,
     );
   }
 
   @override
   Future<void> deleteNote(String id) {
-    return (_database.update(
-      _database.notes,
-    )..where((note) => note.id.equals(id))).write(
-      NotesCompanion(
-        deletedAt: Value(DateTime.now()),
-        updatedAt: Value(DateTime.now()),
-        needsSync: const Value(true),
+    return _afterMutation(
+      (_database.update(
+        _database.notes,
+      )..where((note) => note.id.equals(id))).write(
+        NotesCompanion(
+          deletedAt: Value(DateTime.now()),
+          updatedAt: Value(DateTime.now()),
+          needsSync: const Value(true),
+        ),
       ),
+      reason: 'note deleted',
     );
   }
 
   @override
   Future<void> addNoteFolder(NoteFolder folder) {
     final now = DateTime.now();
-    return _database
-        .into(_database.noteFolders)
-        .insertOnConflictUpdate(
-          NoteFoldersCompanion.insert(
-            id: folder.id,
-            name: folder.name,
-            parentFolderId: Value(folder.parentFolderId),
-            subjectId: Value(folder.subjectId),
-            sortOrder: Value(folder.sortOrder),
-            colorValue: Value(folder.colorValue),
-            createdAt: folder.createdAt ?? now,
-            updatedAt: folder.updatedAt ?? now,
+    return _afterMutation(
+      _database
+          .into(_database.noteFolders)
+          .insertOnConflictUpdate(
+            NoteFoldersCompanion.insert(
+              id: folder.id,
+              name: folder.name,
+              parentFolderId: Value(folder.parentFolderId),
+              subjectId: Value(folder.subjectId),
+              sortOrder: Value(folder.sortOrder),
+              colorValue: Value(folder.colorValue),
+              createdAt: folder.createdAt ?? now,
+              updatedAt: folder.updatedAt ?? now,
+            ),
           ),
-        );
+      reason: 'note folder saved',
+    );
   }
 
   @override
   Future<void> updateNoteFolder(NoteFolder folder) {
-    return (_database.update(
-      _database.noteFolders,
-    )..where((item) => item.id.equals(folder.id))).write(
-      NoteFoldersCompanion(
-        name: Value(folder.name),
-        parentFolderId: Value(folder.parentFolderId),
-        subjectId: Value(folder.subjectId),
-        sortOrder: Value(folder.sortOrder),
-        colorValue: Value(folder.colorValue),
-        updatedAt: Value(DateTime.now()),
-        needsSync: const Value(true),
+    return _afterMutation(
+      (_database.update(
+        _database.noteFolders,
+      )..where((item) => item.id.equals(folder.id))).write(
+        NoteFoldersCompanion(
+          name: Value(folder.name),
+          parentFolderId: Value(folder.parentFolderId),
+          subjectId: Value(folder.subjectId),
+          sortOrder: Value(folder.sortOrder),
+          colorValue: Value(folder.colorValue),
+          updatedAt: Value(DateTime.now()),
+          needsSync: const Value(true),
+        ),
       ),
+      reason: 'note folder updated',
     );
   }
 
   @override
   Future<void> deleteNoteFolder(String id) {
-    return (_database.update(
-      _database.noteFolders,
-    )..where((folder) => folder.id.equals(id))).write(
-      NoteFoldersCompanion(
-        deletedAt: Value(DateTime.now()),
-        updatedAt: Value(DateTime.now()),
-        needsSync: const Value(true),
+    return _afterMutation(
+      (_database.update(
+        _database.noteFolders,
+      )..where((folder) => folder.id.equals(id))).write(
+        NoteFoldersCompanion(
+          deletedAt: Value(DateTime.now()),
+          updatedAt: Value(DateTime.now()),
+          needsSync: const Value(true),
+        ),
       ),
+      reason: 'note folder deleted',
     );
   }
 
   @override
   Future<void> addSubject(SubjectItem item) {
     final now = DateTime.now();
-    return _database
-        .into(_database.subjects)
-        .insertOnConflictUpdate(
-          SubjectsCompanion.insert(
-            id: item.id,
-            name: item.name,
-            colorValue: Value(item.color.toARGB32()),
-            createdAt: now,
-            updatedAt: now,
+    return _afterMutation(
+      _database
+          .into(_database.subjects)
+          .insertOnConflictUpdate(
+            SubjectsCompanion.insert(
+              id: item.id,
+              name: item.name,
+              colorValue: Value(item.color.toARGB32()),
+              createdAt: now,
+              updatedAt: now,
+            ),
           ),
-        );
+      reason: 'subject saved',
+    );
   }
 
   @override
   Future<void> updateSubject(SubjectItem item) {
-    return (_database.update(
-      _database.subjects,
-    )..where((subject) => subject.id.equals(item.id))).write(
-      SubjectsCompanion(
-        name: Value(item.name),
-        colorValue: Value(item.color.toARGB32()),
-        updatedAt: Value(DateTime.now()),
-        needsSync: const Value(true),
+    return _afterMutation(
+      (_database.update(
+        _database.subjects,
+      )..where((subject) => subject.id.equals(item.id))).write(
+        SubjectsCompanion(
+          name: Value(item.name),
+          colorValue: Value(item.color.toARGB32()),
+          updatedAt: Value(DateTime.now()),
+          needsSync: const Value(true),
+        ),
       ),
+      reason: 'subject updated',
     );
   }
 
   @override
   Future<void> deleteSubject(String id) {
-    return (_database.update(
-      _database.subjects,
-    )..where((subject) => subject.id.equals(id))).write(
-      SubjectsCompanion(
-        deletedAt: Value(DateTime.now()),
-        updatedAt: Value(DateTime.now()),
-        needsSync: const Value(true),
+    return _afterMutation(
+      (_database.update(
+        _database.subjects,
+      )..where((subject) => subject.id.equals(id))).write(
+        SubjectsCompanion(
+          deletedAt: Value(DateTime.now()),
+          updatedAt: Value(DateTime.now()),
+          needsSync: const Value(true),
+        ),
       ),
+      reason: 'subject deleted',
     );
   }
 
   @override
   Future<void> addExam(ExamOverview exam) {
     final now = DateTime.now();
-    return _database
-        .into(_database.exams)
-        .insertOnConflictUpdate(
-          ExamsCompanion.insert(
-            id: exam.id,
-            subject: exam.subject,
-            dateLabel: exam.dateLabel,
-            progress: Value(exam.progress),
-            examJson: Value(exam.encode()),
-            createdAt: exam.createdAt ?? now,
-            updatedAt: exam.updatedAt ?? now,
+    return _afterMutation(
+      _database
+          .into(_database.exams)
+          .insertOnConflictUpdate(
+            ExamsCompanion.insert(
+              id: exam.id,
+              subject: exam.subject,
+              dateLabel: exam.dateLabel,
+              progress: Value(exam.progress),
+              examJson: Value(exam.encode()),
+              createdAt: exam.createdAt ?? now,
+              updatedAt: exam.updatedAt ?? now,
+            ),
           ),
-        );
+      reason: 'exam saved',
+    );
   }
 
   @override
   Future<void> updateExam(ExamOverview exam) {
-    return (_database.update(
-      _database.exams,
-    )..where((item) => item.id.equals(exam.id))).write(
-      ExamsCompanion(
-        subject: Value(exam.subject),
-        dateLabel: Value(exam.dateLabel),
-        progress: Value(exam.progress),
-        examJson: Value(exam.encode()),
-        updatedAt: Value(DateTime.now()),
-        needsSync: const Value(true),
+    return _afterMutation(
+      (_database.update(
+        _database.exams,
+      )..where((item) => item.id.equals(exam.id))).write(
+        ExamsCompanion(
+          subject: Value(exam.subject),
+          dateLabel: Value(exam.dateLabel),
+          progress: Value(exam.progress),
+          examJson: Value(exam.encode()),
+          updatedAt: Value(DateTime.now()),
+          needsSync: const Value(true),
+        ),
       ),
+      reason: 'exam updated',
     );
   }
 
   @override
   Future<void> deleteExam(String id) {
-    return (_database.update(
-      _database.exams,
-    )..where((exam) => exam.id.equals(id))).write(
-      ExamsCompanion(
-        deletedAt: Value(DateTime.now()),
-        updatedAt: Value(DateTime.now()),
-        needsSync: const Value(true),
+    return _afterMutation(
+      (_database.update(
+        _database.exams,
+      )..where((exam) => exam.id.equals(id))).write(
+        ExamsCompanion(
+          deletedAt: Value(DateTime.now()),
+          updatedAt: Value(DateTime.now()),
+          needsSync: const Value(true),
+        ),
       ),
+      reason: 'exam deleted',
     );
   }
 
   @override
   Future<void> addReminder(ReminderItem reminder) {
     final now = DateTime.now();
-    return _database
-        .into(_database.reminders)
-        .insert(
-          RemindersCompanion.insert(
-            id: reminder.id,
-            title: reminder.title,
-            dateLabel: reminder.dateLabel,
-            createdAt: now,
-            updatedAt: now,
+    return _afterMutation(
+      _database
+          .into(_database.reminders)
+          .insert(
+            RemindersCompanion.insert(
+              id: reminder.id,
+              title: reminder.title,
+              dateLabel: reminder.dateLabel,
+              createdAt: now,
+              updatedAt: now,
+            ),
           ),
-        );
+      reason: 'reminder saved',
+    );
+  }
+
+  @override
+  Future<void> addStudySession(StudySession session) {
+    final now = DateTime.now();
+    return _afterMutation(
+      _database
+          .into(_database.studySessions)
+          .insertOnConflictUpdate(
+            StudySessionsCompanion.insert(
+              id: session.id,
+              sessionJson: session.encode(),
+              startedAt: session.startedAt,
+              endedAt: Value(session.endedAt),
+              createdAt: session.createdAt ?? now,
+              updatedAt: session.updatedAt ?? now,
+            ),
+          ),
+      reason: 'study session saved',
+    );
+  }
+
+  @override
+  Future<void> updateStudySession(StudySession session) {
+    return _afterMutation(
+      (_database.update(
+        _database.studySessions,
+      )..where((item) => item.id.equals(session.id))).write(
+        StudySessionsCompanion(
+          sessionJson: Value(session.encode()),
+          startedAt: Value(session.startedAt),
+          endedAt: Value(session.endedAt),
+          updatedAt: Value(DateTime.now()),
+          needsSync: const Value(true),
+        ),
+      ),
+      reason: 'study session updated',
+    );
+  }
+
+  @override
+  Future<void> deleteStudySession(String id) {
+    return _afterMutation(
+      (_database.update(
+        _database.studySessions,
+      )..where((item) => item.id.equals(id))).write(
+        StudySessionsCompanion(
+          deletedAt: Value(DateTime.now()),
+          updatedAt: Value(DateTime.now()),
+          needsSync: const Value(true),
+        ),
+      ),
+      reason: 'study session deleted',
+    );
   }
 
   @override
   Future<void> dispose() {
+    _syncCoordinator.dispose();
     return _database.close();
   }
 }
