@@ -2,7 +2,7 @@
     <application
         android:label="study_buddy"
         android:name="${applicationName}"
-        android:icon="@drawable/ic_studybuddy"
+        android:icon="@mipmap/ic_launcher"
         android:roundIcon="@drawable/ic_studybuddy">
         <activity
             android:name=".MainActivity"

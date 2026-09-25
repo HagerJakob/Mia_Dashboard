@@ -1,10 +1,37 @@
-import 'package:drift/drift.dart';
-
 import 'dart:convert';
 
+import 'package:drift/drift.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/app_database.dart';
+
+class DeviceAccountBinding {
+  static const _key = 'study_buddy_device_owner_id';
+
+  static Future<String?> read() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_key);
+  }
+
+  static Future<void> bind(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final existing = prefs.getString(_key);
+    if (existing != null && existing != userId) {
+      throw StateError(
+        'Dieses Gerät ist bereits an einen anderen Account gebunden.',
+      );
+    }
+    if (existing != userId) {
+      await prefs.setString(_key, userId);
+    }
+  }
+
+  static Future<void> clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key);
+  }
+}
 
 class StudySync {
   StudySync(this.database, this.client);
@@ -12,9 +39,40 @@ class StudySync {
   final AppDatabase database;
   final SupabaseClient client;
 
+  static bool shouldSkipRemoteApply({
+    required bool localNeedsSync,
+    required DateTime localUpdatedAt,
+    required DateTime remoteUpdatedAt,
+  }) {
+    if (localNeedsSync) return true;
+    return !localUpdatedAt.isBefore(remoteUpdatedAt);
+  }
+
+  static bool shouldSyncLocalRow({
+    String? rowOwnerId,
+    String? currentUserId,
+    String? deviceOwnerId,
+  }) {
+    if (currentUserId == null) return false;
+    if (deviceOwnerId != null && deviceOwnerId != currentUserId) {
+      return false;
+    }
+    if (rowOwnerId == null) return true;
+    return rowOwnerId == currentUserId;
+  }
+
   Future<void> run() async {
     final user = client.auth.currentUser;
     if (user == null) return;
+
+    final deviceOwnerId = await DeviceAccountBinding.read();
+    if (deviceOwnerId != null && deviceOwnerId != user.id) {
+      throw StateError(
+        'Dieses Gerät ist bereits mit einem anderen StudyBuddy-Konto verbunden. '
+        'Zum Wechseln muss das Gerät zuerst explizit neu gebunden werden.',
+      );
+    }
+    await DeviceAccountBinding.bind(user.id);
 
     for (final kind in const [
       'schedule',
@@ -226,9 +284,11 @@ class StudySync {
         .where((r) => r['id'] == id)
         .firstOrNull;
     if (local != null &&
-        ((local['needs_sync'] as bool) ||
-            (local['updated_at'] as DateTime).millisecondsSinceEpoch ~/ 1000 >=
-                updated.millisecondsSinceEpoch ~/ 1000)) {
+        shouldSkipRemoteApply(
+          localNeedsSync: local['needs_sync'] as bool,
+          localUpdatedAt: local['updated_at'] as DateTime,
+          remoteUpdatedAt: updated,
+        )) {
       return;
     }
     switch (kind) {

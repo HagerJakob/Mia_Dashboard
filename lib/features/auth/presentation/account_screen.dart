@@ -74,7 +74,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       await SupabaseService.client?.auth.signOut();
       if (mounted) {
         setState(
-          () => _message = 'Abgemeldet. Lokale Daten bleiben auf diesem Gerät.',
+          () => _message =
+              'Abgemeldet. Das Gerät bleibt sicher an das bisherige StudyBuddy-Konto gebunden, damit keine lokalen Daten versehentlich einem anderen Konto zugeordnet werden.',
         );
       }
     } catch (error) {

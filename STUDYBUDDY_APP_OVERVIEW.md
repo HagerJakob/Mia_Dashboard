@@ -152,6 +152,8 @@ Supabase wird ueber `SupabaseService` initialisiert. Die Werte kommen lokal per 
 
 Die zentrale Sync-Logik ist `StudySync`.
 
+Neu verifiziert: Der lokale Sync-Guard verhindert, dass eine stale Remote-Version eine lokalere, ungesyncte lokale Row ueberschreibt. Ebenso ist das lokale Gerät an ein StudyBuddy-Konto gebunden, damit nicht versehentlich Daten zwischen Accounts geteilt oder hochgeladen werden. Das ist bewusst eine kleine, sichere Faelligkeit anstelle eines großen Account-Umbaus.
+
 Sie synchronisiert folgende `kind`-Werte in Supabase `study_items`:
 
 - `schedule`
@@ -172,6 +174,7 @@ Sync-Ablauf:
 4. Danach werden Remote-Rows seitenweise aus Supabase geladen.
 5. Remote-Daten werden lokal nur angewendet, wenn lokal keine dirty Version existiert und die Remote-Version neuer ist.
 6. Remote angewendete Daten bekommen `needsSync: false`, damit kein Sync-Loop entsteht.
+7. Die Remote-Anwendung verwendet einen robusten Vergleich `localUpdatedAt.isBefore(remoteUpdatedAt)`, damit ein lokaler Dirty-Stand nicht durch eine alte Remote-Version wiederhergestellt wird.
 
 ## SyncCoordinator
 
