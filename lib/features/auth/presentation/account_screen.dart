@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/build_info.dart';
 import '../../../core/supabase/supabase_service.dart';
 import '../../calendar/presentation/calendar_controller.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
@@ -18,6 +19,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   final _password = TextEditingController();
   bool _busy = false;
   String? _message;
+  String? _diagnostics;
 
   @override
   void dispose() {
@@ -54,6 +56,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     setState(() {
       _busy = true;
       _message = null;
+      _diagnostics = null;
     });
     try {
       await ref.read(studyBuddyControllerProvider.notifier).syncNow();
@@ -74,12 +77,72 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       await SupabaseService.client?.auth.signOut();
       if (mounted) {
         setState(
-          () => _message =
-              'Abgemeldet. Das Gerät bleibt sicher an das bisherige StudyBuddy-Konto gebunden, damit keine lokalen Daten versehentlich einem anderen Konto zugeordnet werden.',
+          () => _message = 'Abgemeldet. Das Gerät bleibt sicher an das bisherige StudyBuddy-Konto gebunden, damit keine lokalen Daten versehentlich einem anderen Konto zugeordnet werden.',
         );
       }
     } catch (error) {
       if (mounted) setState(() => _message = 'Abmelden fehlgeschlagen: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _runDiagnostics() async {
+    setState(() {
+      _busy = true;
+      _message = null;
+      _diagnostics = null;
+    });
+    try {
+      final client = SupabaseService.client;
+      final user = client?.auth.currentUser;
+      final localSubjects = ref.read(studyBuddyControllerProvider).subjects;
+      var remoteActive = 0;
+      var remoteDeleted = 0;
+      final newestSubjects = <String>[];
+
+      if (client != null && user != null) {
+        final rows = await client
+            .from('study_items')
+            .select('payload, deleted_at, updated_at')
+            .eq('owner_id', user.id)
+            .eq('kind', 'subject')
+            .order('updated_at', ascending: false)
+            .limit(8);
+        for (final row in rows) {
+          final payload = row['payload'];
+          final name = payload is Map ? payload['name'] : null;
+          final deleted = row['deleted_at'] != null;
+          if (deleted) {
+            remoteDeleted++;
+          } else {
+            remoteActive++;
+          }
+          newestSubjects.add(
+            '${deleted ? 'gelöscht' : 'aktiv'}: ${name ?? '(ohne Name)'}',
+          );
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _diagnostics = [
+          'Build: ${BuildInfo.label}',
+          'Build-Zeit: ${BuildInfo.builtAt}',
+          'Supabase konfiguriert: ${client == null ? 'nein' : 'ja'}',
+          'Angemeldet: ${user?.email ?? 'nein'}',
+          'User-ID: ${user?.id ?? '-'}',
+          'Lokale aktive Fächer: ${localSubjects.length}',
+          'Remote aktive Fächer unter den letzten 8: $remoteActive',
+          'Remote gelöschte Fächer unter den letzten 8: $remoteDeleted',
+          if (newestSubjects.isNotEmpty) '',
+          ...newestSubjects,
+        ].join('\n');
+      });
+    } catch (error) {
+      if (mounted) {
+        setState(() => _diagnostics = 'Diagnose fehlgeschlagen: $error');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -134,6 +197,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   icon: const Icon(Icons.sync_rounded),
                   label: const Text('Jetzt synchronisieren'),
                 ),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _runDiagnostics,
+                  icon: const Icon(Icons.bug_report_outlined),
+                  label: const Text('Sync-Diagnose anzeigen'),
+                ),
                 TextButton(
                   onPressed: _busy ? null : _signOut,
                   child: const Text('Abmelden'),
@@ -150,6 +218,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 20),
                   child: Text(_message!),
+                ),
+              if (_diagnostics != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 20),
+                  child: SelectableText(_diagnostics!),
                 ),
               if (_busy)
                 const Padding(

@@ -653,6 +653,8 @@ class DriftStudyBuddyRepository implements StudyBuddyRepository {
               colorValue: Value(item.color.toARGB32()),
               createdAt: now,
               updatedAt: now,
+              deletedAt: const Value(null),
+              needsSync: const Value(true),
             ),
           ),
       reason: 'subject saved',
@@ -668,6 +670,7 @@ class DriftStudyBuddyRepository implements StudyBuddyRepository {
         SubjectsCompanion(
           name: Value(item.name),
           colorValue: Value(item.color.toARGB32()),
+          deletedAt: const Value(null),
           updatedAt: Value(DateTime.now()),
           needsSync: const Value(true),
         ),
